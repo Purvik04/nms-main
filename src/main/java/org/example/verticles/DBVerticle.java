@@ -33,9 +33,7 @@ public class DBVerticle extends AbstractVerticle
                 .setPort(Integer.parseInt(Constants.DB_PORT))
                 .setDatabase(Constants.DB_NAME)
                 .setUser(Constants.DB_USER)
-                .setPassword(Constants.DB_PASSWORD)
-                .setReconnectAttempts(3)
-                .setReconnectInterval(2000L);
+                .setPassword(Constants.DB_PASSWORD);
 
         var poolOptions = new PoolOptions()
                 .setMaxSize(10);
@@ -180,9 +178,9 @@ public class DBVerticle extends AbstractVerticle
 
                 logger.info("Executing Batch Query: {} with {} parameter sets", query, batchParams.size());
 
-                client.preparedQuery(query).executeBatch(batchParams, ar ->
+                client.preparedQuery(query).executeBatch(batchParams, asyncResult ->
                 {
-                    if (ar.succeeded())
+                    if (asyncResult.succeeded())
                     {
                         logger.info("Batch query executed successfully");
 
@@ -192,11 +190,11 @@ public class DBVerticle extends AbstractVerticle
                     }
                     else
                     {
-                        logger.error("Batch query execution failed: {}", ar.cause().getMessage());
+                        logger.error("Batch query execution failed: {}", asyncResult.cause().getMessage());
 
                         message.reply(new JsonObject()
                                 .put(Constants.SUCCESS, false)
-                                .put(Constants.ERROR, ar.cause().getMessage()));
+                                .put(Constants.ERROR, asyncResult.cause().getMessage()));
                     }
                 });
             }

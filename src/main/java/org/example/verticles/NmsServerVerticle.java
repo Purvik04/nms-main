@@ -13,6 +13,7 @@ import org.example.routes.DiscoveryRouter;
 import org.example.routes.ProvisioningRouter;
 import org.example.service.AuthHandler;
 import org.example.utils.Constants;
+import org.example.utils.MotaDataConfigUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +33,8 @@ public class NmsServerVerticle extends AbstractVerticle
         // Public login route
         mainRouter.post("/login").handler(context ->
 
-                context.request().bodyHandler(buffer -> {
-
+                context.request().bodyHandler(buffer ->
+                {
                     var body = buffer.toJsonObject();
 
                     var username = body.getString("username");
@@ -60,7 +61,7 @@ public class NmsServerVerticle extends AbstractVerticle
                 {
                     logger.error("Authentication failed: {}", context.failure().getMessage());
 
-                    context.response().setStatusCode(401).end(new JsonObject().put("success", false).put("message", "Unauthorized").encode());
+                    context.response().setStatusCode(401).end(new JsonObject().put(Constants.SUCCESS, false).put("message", "Unauthorized").encode());
                 });
 
 
@@ -79,18 +80,20 @@ public class NmsServerVerticle extends AbstractVerticle
         vertx.createHttpServer(
                 new HttpServerOptions()
                         .setSsl(true)
-                        .setKeyCertOptions(new JksOptions().setPath("keystore.jks").setPassword("motadata"))
+                        .setKeyCertOptions(new JksOptions()
+                                .setPath(MotaDataConfigUtil.getConfig().getString(Constants.SSL_KEYSTORE_PATH))
+                                .setPassword(MotaDataConfigUtil.getConfig().getString(Constants.SSL_KEYSTORE_PASSWORD)))
                 )
                 .requestHandler(mainRouter)
-                .listen(8080, result ->
+                .listen(8080, asyncResult ->
                 {
-                    if (result.succeeded())
+                    if (asyncResult.succeeded())
                     {
                         startPromise.complete();
                     }
                     else
                     {
-                        startPromise.fail(result.cause().getMessage());
+                        startPromise.fail(asyncResult.cause().getMessage());
                     }
                 });
     }

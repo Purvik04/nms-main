@@ -3,6 +3,7 @@ package org.example.verticles;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Promise;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -16,12 +17,14 @@ public class AvailabilityPollingVerticle extends AbstractVerticle
 {
     private static final Logger logger = LoggerFactory.getLogger(AvailabilityPollingVerticle.class);
 
+    private static final DeliveryOptions deliveryOptions = new DeliveryOptions().setSendTimeout(5000);
+
     @Override
     public void start(Promise<Void> startPromise)
     {
         var query = new JsonObject().put(Constants.QUERY, "SELECT id FROM provisioning_jobs;");
 
-        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, reply -> handleDBResponse(reply, startPromise));
+        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, deliveryOptions,reply -> handleDBResponse(reply, startPromise));
 
         vertx.eventBus().localConsumer(Constants.EVENTBUS_AVAILABILITY_POLLING_ADDRESS, this::handleAvailabilityPolling);
     }
@@ -39,7 +42,7 @@ public class AvailabilityPollingVerticle extends AbstractVerticle
                 .put(Constants.QUERY, fetchQuery)
                 .put(Constants.PARAMS, deviceIds);
 
-        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, reply ->
+        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query,deliveryOptions, reply ->
         {
             if (reply.succeeded())
             {

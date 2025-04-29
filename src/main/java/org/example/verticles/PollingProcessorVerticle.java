@@ -49,12 +49,7 @@ public class PollingProcessorVerticle extends AbstractVerticle
 
                 logger.info("Plugin processed batch, sending {} entries to DB", processedData.size());
 
-                vertx.executeBlocking(() ->
-                {
-                    sendToDatabase(processedData, vertx.eventBus());
-
-                    return null;
-                }, false);
+                sendToDatabase(processedData);
             }
             else
             {
@@ -64,7 +59,7 @@ public class PollingProcessorVerticle extends AbstractVerticle
     }
 
 
-    private void sendToDatabase(JsonArray polledResults, EventBus eventBus)
+    private void sendToDatabase(JsonArray polledResults)
     {
         var batchParams = new JsonArray();
 
@@ -82,7 +77,7 @@ public class PollingProcessorVerticle extends AbstractVerticle
                 .put(Constants.QUERY, QUERY_INSERT_PROVISIONED_DATA)
                 .put(Constants.PARAMS, batchParams);
 
-        eventBus.<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, request, reply ->
+        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, request, reply ->
         {
             if (reply.succeeded())
             {

@@ -35,13 +35,17 @@ public class Utils
     {
         String path  = context.normalizedPath().split("/")[2];
 
+        var method = context.request().method().name();
+
         return switch (path)
         {
             case Constants.CREDENTIALS -> "credential_profiles";
 
             case Constants.DISCOVERY -> "discovery_profiles";
 
-            case Constants.PROVISION -> "provisioning_jobs";
+            case Constants.PROVISION -> (method.equals("POST") || method.equals("DELETE"))
+                    ? "provisioning_jobs"
+                    : "provisioned_data";
 
             default -> "";
         };

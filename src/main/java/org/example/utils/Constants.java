@@ -44,8 +44,6 @@ public class Constants
 
     public static final String EVENTBUS_AVAILABILITY_POLLING_ADDRESS = "polling.availability";
 
-    public static final String EVENTBUS_ADD_NEW_DEVICE_ADDRESS = "verticle.addnewdevice";
-
     public static final String MESSAGE_BODY_REQUIRED = "Body is empty";
 
     public static final String MESSAGE_ID_REQUIRED = "ID is required";
@@ -83,5 +81,23 @@ public class Constants
     public static final String DOWN = "DOWN";
 
     public static final String STATUS = "status";
+
+
+
+    public static final String CONFIG_FILE_PATH = "config.json";
+
+    public static final String SSL_KEYSTORE_PATH = "ssl_keyStore_path";
+
+    public static final String SSL_KEYSTORE_PASSWORD = "ssl_keyStore_password";
+
+    public static final String JWT_SECRET_KEY = "jwt-secret-key";
+
+    public static final String JWT_ENCRYPTION_ALGORITHM = "jwt-encryption-algorithm";
+
+    public static final String JWT_EXPIRY_TIME_IN_SECONDS = "jwtExpiryTimeInSeconds";
+
+    public static final String EVENT_LOOP_POOL_SIZE = "eventLoopPoolSize";
+
+    public static final String WORKER_POOL_SIZE = "workerPoolSize";
 }
 

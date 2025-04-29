@@ -2,7 +2,6 @@ package org.example.verticles;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -49,11 +48,11 @@ public class MetricPollingVerticle extends AbstractVerticle
                 .put(Constants.QUERY, fetchJobs)
                 .put(Constants.PARAMS, filteredIds);
 
-        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, dbReply ->
+        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, asyncResult ->
         {
-            if (dbReply.succeeded())
+            if (asyncResult.succeeded())
             {
-                var response = dbReply.result().body();
+                var response = asyncResult.result().body();
 
                 if (response.getBoolean(Constants.SUCCESS))
                 {
@@ -79,7 +78,7 @@ public class MetricPollingVerticle extends AbstractVerticle
             }
             else
             {
-                logger.error("Database request failed: {}", dbReply.cause().getMessage());
+                logger.error("Database request failed: {}", asyncResult.cause().getMessage());
             }
         });
 

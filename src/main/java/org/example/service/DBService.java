@@ -5,6 +5,7 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import org.example.cache.AvailabilityCacheEngine;
 import org.example.utils.Constants;
 import org.example.utils.Utils;
 import org.slf4j.Logger;
@@ -149,6 +150,8 @@ public class DBService
                                         .put(Constants.CREDENTIAL_PROFILE_ID, discoveryProfile.getInteger(Constants.CREDENTIAL_PROFILE_ID)));
 
                         sendToQueryBuilder(formattedRequestBody, context);
+
+
                     }
                     else
                     {
@@ -187,11 +190,11 @@ public class DBService
 
     public void executeQuery(JsonObject query, RoutingContext context)
     {
-        eventBus.request(Constants.EVENTBUS_DATABASE_ADDRESS, query, ar -> {
+        eventBus.<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, ar -> {
 
             if (ar.succeeded())
             {
-                var result = (JsonObject) ar.result().body();
+                var result = ar.result().body();
 
                 if (result.getBoolean(Constants.SUCCESS, false))
                 {
@@ -248,6 +251,8 @@ public class DBService
 
                 if (!resBody.getBoolean(Constants.SUCCESS) || resBody.getJsonArray(Constants.DATA).isEmpty())
                 {
+                    logger.info("No discovery profiles found for IDs: {}", ids);
+
                     return responseArray;
                 }
 

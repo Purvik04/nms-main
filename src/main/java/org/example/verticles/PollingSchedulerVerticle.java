@@ -2,9 +2,7 @@ package org.example.verticles;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import org.example.cache.AvailabilityCacheEngine;
 import org.example.utils.Constants;
 
@@ -17,11 +15,11 @@ public class PollingSchedulerVerticle extends AbstractVerticle
 
     private final Map<Integer, Long> deviceTimerAvailabilityMap = new ConcurrentHashMap<>();
 
-    private static final long METRIC_POLLING_INTERVAL_MILLIS = 5* 60 * 1000L; //5 minutes
+    private static final long METRIC_POLLING_INTERVAL_MILLIS = 5 * 60 * 1000L; //5 minutes
 
     private static final long AVL_POLLING_INTERVAL_MILLIS =  30 * 1000L; //2 minutes
 
-    private static final long CHECK_INTERVAL = 10_000; // 10 seconds
+    private static final long SCHEDULER_INTERVAL = 10_000; // 10 seconds
 
     private static final JsonArray reUsableForAvailability = new JsonArray();
 
@@ -30,7 +28,7 @@ public class PollingSchedulerVerticle extends AbstractVerticle
     @Override
     public void start(Promise<Void> startPromise)
     {
-        vertx.setPeriodic(CHECK_INTERVAL, timerId ->
+        vertx.setPeriodic(SCHEDULER_INTERVAL, timerId ->
         {
             var now = System.currentTimeMillis();
 

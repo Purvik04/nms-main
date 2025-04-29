@@ -1,0 +1,20 @@
+{
+  "eventLoopPoolSize": 8,
+  "workerPoolSize": 20,
+  "NmsServerVerticle": 1,
+  "DBVerticle": 2,
+  "QueryBuilderVerticle": 1,
+  "AvailabilityPollingVerticle": 1,
+  "PollingProcessorVerticle": 2,
+  "MetricPollingVerticle": 2,
+  "PollingSchedulerVerticle": 1,
+  "eventBus": {
+    "sendTimeout": 5000,
+    "receiveBufferSize": 1024
+  },
+  "ssl_keyStore_path": "keystore.jks",
+  "ssl_keyStore_password": "motadata",
+  "jwt-secret-key" : "default-secret-key",
+  "jwt-encryption-algorithm" : "HS256",
+  "jwtExpiryTimeInSeconds": 3600
+}
