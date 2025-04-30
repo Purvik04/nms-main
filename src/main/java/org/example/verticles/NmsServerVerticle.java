@@ -14,8 +14,8 @@ import org.example.routes.ProvisioningRouter;
 import org.example.service.AuthHandler;
 import org.example.utils.Constants;
 import org.example.utils.MotaDataConfigUtil;
-//import org.example.utils.RequestValidator;
-//import org.example.utils.RequestValidator2;
+import org.example.utils.RequestValidator;
+import org.example.utils.RequestValidator2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +28,7 @@ public class NmsServerVerticle extends AbstractVerticle
     {
         try
         {
-//            RequestValidator.initialize();
+            RequestValidator.initialize();
 //            RequestValidator2.initialize();
 
             var mainRouter = Router.router(vertx);

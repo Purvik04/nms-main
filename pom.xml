@@ -81,12 +81,12 @@
         </dependency>
 
 
-<!--        &lt;!&ndash; Maven &ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>io.vertx</groupId>-->
-<!--            <artifactId>vertx-json-schema</artifactId>-->
-<!--            <version>4.5.14</version>-->
-<!--        </dependency>-->
+        <!-- Maven -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-json-schema</artifactId>
+            <version>4.5.14</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
         <dependency>
@@ -96,11 +96,11 @@
             <scope>compile</scope>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>com.networknt</groupId>-->
-<!--            <artifactId>json-schema-validator</artifactId>-->
-<!--            <version>1.0.78</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.0.78</version>
+        </dependency>
 
     </dependencies>
 

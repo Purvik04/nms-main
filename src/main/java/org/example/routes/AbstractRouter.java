@@ -6,9 +6,9 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import org.example.service.DBService;
 import org.example.utils.Constants;
-//import org.example.utils.RequestValidator;
-//import org.example.utils.RequestValidator2;
-//import org.example.utils.Utils;
+import org.example.utils.RequestValidator;
+import org.example.utils.RequestValidator2;
+import org.example.utils.Utils;
 
 public abstract class AbstractRouter implements RouterHandler
 {
@@ -79,17 +79,16 @@ public abstract class AbstractRouter implements RouterHandler
             return true;
         }
 
-//        var errorMessage = RequestValidator.validate(Utils.getTableNameFromContext(context), body);
+        var errorMessage = RequestValidator.validate(Utils.getTableNameFromContext(context), body);
 
-//        if(errorMessage != null)
-//        {
-//            context.response().setStatusCode(400).end(errorMessage);
-//
-//            return true;
-//        }
+        if(errorMessage != null)
+        {
+            context.response().setStatusCode(400).end(errorMessage);
 
-//        return false;
-        return true;
+            return true;
+        }
+
+        return false;
     }
 
     @Override
