@@ -39,9 +39,9 @@ public class Utils
 
         return switch (path)
         {
-            case Constants.CREDENTIALS -> "credential_profiles";
+            case Constants.CREDENTIALS -> Constants.CREDENTIAL_PROFILES_TABLE_NAME;
 
-            case Constants.DISCOVERY -> "discovery_profiles";
+            case Constants.DISCOVERY -> Constants.DISCOVERY_PROFILES_TABLE_NAME;
 
             case Constants.PROVISION -> (method.equals("POST") || method.equals("DELETE"))
                     ? "provisioning_jobs"

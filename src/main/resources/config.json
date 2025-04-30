@@ -1,5 +1,5 @@
 {
-  "eventLoopPoolSize": 8,
+  "eventLoopPoolSize": 10,
   "workerPoolSize": 20,
   "NmsServerVerticle": 1,
   "DBVerticle": 2,

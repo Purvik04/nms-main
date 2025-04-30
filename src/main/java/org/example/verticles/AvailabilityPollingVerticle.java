@@ -54,22 +54,20 @@ public class AvailabilityPollingVerticle extends AbstractVerticle
 
                     if (!data.isEmpty())
                     {
-                        vertx.executeBlocking(() -> Utils.runFping(data), false, ar ->
+                        vertx.executeBlocking(() -> Utils.runFping(data), false, asyncResult ->
                         {
-                            if (ar.succeeded())
+                            if (asyncResult.succeeded())
                             {
-                                var fpingResults = ar.result();
+                                var fpingResults = asyncResult.result();
 
                                 logger.info("fping results: {}", fpingResults);
 
                                 if(!fpingResults.isEmpty())
                                 {
-                                    fpingResults.forEach(result ->
+                                    for (var i = 0; i<fpingResults.size(); i++)
                                     {
-                                        var deviceResult = (JsonObject) result;
-
-                                        AvailabilityCacheEngine.setDeviceStatus(deviceResult.getInteger(Constants.ID), deviceResult.getString(Constants.STATUS));
-                                    });
+                                        AvailabilityCacheEngine.setDeviceStatus(fpingResults.getJsonObject(i).getInteger(Constants.ID), fpingResults.getJsonObject(i).getString(Constants.STATUS));
+                                    }
                                 }
                             }
                         });
@@ -91,12 +89,10 @@ public class AvailabilityPollingVerticle extends AbstractVerticle
 
                 if (!data.isEmpty())
                 {
-                    data.forEach(item ->
+                    for(var i = 0 ; i < data.size(); i++)
                     {
-                        var device = (JsonObject) item;
-
-                        AvailabilityCacheEngine.setDeviceStatus(device.getInteger(Constants.ID),Constants.DOWN);
-                    });
+                        AvailabilityCacheEngine.setDeviceStatus(data.getJsonObject(i).getInteger(Constants.ID),Constants.DOWN);
+                    }
                 }
 
                 startPromise.complete();

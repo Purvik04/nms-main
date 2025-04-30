@@ -40,7 +40,7 @@ public class MetricPollingVerticle extends AbstractVerticle
 
         var placeholders = Utils.buildPlaceholders(filteredIds.size());
 
-        var fetchJobs = "SELECT pj.id AS id, pj.ip, pj.port, cp.credentials FROM provisioning_jobs pj " +
+        var fetchJobs = "SELECT pj.id AS id, pj.ip, pj.port, cp.credentials, cp.system_type FROM provisioning_jobs pj " +
                 "JOIN credential_profiles cp ON pj.credential_profile_id = cp.id " +
                 "WHERE pj.id IN (" + placeholders + ") ORDER BY pj.id";
 

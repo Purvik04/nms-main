@@ -14,6 +14,8 @@ import org.example.routes.ProvisioningRouter;
 import org.example.service.AuthHandler;
 import org.example.utils.Constants;
 import org.example.utils.MotaDataConfigUtil;
+//import org.example.utils.RequestValidator;
+//import org.example.utils.RequestValidator2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,78 +26,91 @@ public class NmsServerVerticle extends AbstractVerticle
     @Override
     public void start(Promise<Void> startPromise)
     {
-        var mainRouter = Router.router(vertx);
+        try
+        {
+//            RequestValidator.initialize();
+//            RequestValidator2.initialize();
 
-        var authHandler = new AuthHandler(vertx);
+            var mainRouter = Router.router(vertx);
 
-        mainRouter.route("/").handler(BodyHandler.create());
+            var authHandler = new AuthHandler(vertx);
 
-        // Public login route
-        mainRouter.post("/login").handler(context ->
+            mainRouter.route("/").handler(BodyHandler.create());
 
-                context.request().bodyHandler(buffer ->
-                {
-                    var body = buffer.toJsonObject();
+            // Public login route
+            mainRouter.post("/login").handler(context ->
 
-                    var username = body.getString("username");
-
-                    var password = body.getString("password");
-
-                    //Fake authentication for demo purposes
-                    if ("admin".equals(username) && "password".equals(password))
+                    context.request().bodyHandler(buffer ->
                     {
-                        var token = authHandler.generateToken(new JsonObject().put("username", username));
+                        var body = buffer.toJsonObject();
 
-                        context.response().setStatusCode(200).end(new JsonObject().put(Constants.SUCCESS, true).put("token", token).encode());
-                    }
-                    else
+                        var username = body.getString("username");
+
+                        var password = body.getString("password");
+
+                        //Fake authentication for demo purposes
+                        if ("admin".equals(username) && "password".equals(password))
+                        {
+                            var token = authHandler.generateToken(new JsonObject().put("username", username));
+
+                            context.response().setStatusCode(200).end(new JsonObject().put(Constants.SUCCESS, true).put("token", token).encode());
+                        }
+                        else
+                        {
+                            context.response().setStatusCode(401).end(new JsonObject().put(Constants.SUCCESS, false).put("message", "Invalid credentials").encode());
+                        }
+                    })
+            );
+
+            mainRouter.route("/api/*")
+                    .handler(JWTAuthHandler.create(authHandler.getProvider()))
+                    .failureHandler(context ->
                     {
-                        context.response().setStatusCode(401).end(new JsonObject().put(Constants.SUCCESS, false).put("message", "Invalid credentials").encode());
-                    }
-                })
-        );
+                        logger.error("Authentication failed: {}", context.failure().getMessage());
 
-        mainRouter.route("/api/*")
-                .handler(JWTAuthHandler.create(authHandler.getProvider()))
-                .failureHandler(context ->
-                {
-                    logger.error("Authentication failed: {}", context.failure().getMessage());
+                        context.response().setStatusCode(401).end(new JsonObject().put(Constants.SUCCESS, false).put("message", "Unauthorized").encode());
+                    });
 
-                    context.response().setStatusCode(401).end(new JsonObject().put(Constants.SUCCESS, false).put("message", "Unauthorized").encode());
-                });
+            var credentialRouter = new CredentialRouter(vertx);
 
+            mainRouter.route("/api/credentials/*").subRouter(credentialRouter.getRouter());
 
-        var credentialRouter = new CredentialRouter(vertx);
+            var discoveryRouter = new DiscoveryRouter(vertx);
 
-        mainRouter.route("/api/credentials/*").subRouter(credentialRouter.getRouter());
+            mainRouter.route("/api/discovery/*").subRouter(discoveryRouter.getRouter());
 
-        var discoveryRouter = new DiscoveryRouter(vertx);
+            var provisioningRouter = new ProvisioningRouter(vertx);
 
-        mainRouter.route("/api/discovery/*").subRouter(discoveryRouter.getRouter());
+            mainRouter.route("/api/provision/*").subRouter(provisioningRouter.getRouter());
 
-        var provisioningRouter = new ProvisioningRouter(vertx);
-
-        mainRouter.route("/api/provision/*").subRouter(provisioningRouter.getRouter());
-
-        vertx.createHttpServer(
-                new HttpServerOptions()
-                        .setSsl(true)
-                        .setKeyCertOptions(new JksOptions()
-                                .setPath(MotaDataConfigUtil.getConfig().getString(Constants.SSL_KEYSTORE_PATH))
-                                .setPassword(MotaDataConfigUtil.getConfig().getString(Constants.SSL_KEYSTORE_PASSWORD)))
-                )
-                .requestHandler(mainRouter)
-                .listen(8080, asyncResult ->
-                {
-                    if (asyncResult.succeeded())
+            vertx.createHttpServer(
+                            new HttpServerOptions()
+                                    .setSsl(true)
+                                    .setKeyCertOptions(new JksOptions()
+                                            .setPath(MotaDataConfigUtil.getConfig().getString(Constants.SSL_KEYSTORE_PATH))
+                                            .setPassword(MotaDataConfigUtil.getConfig().getString(Constants.SSL_KEYSTORE_PASSWORD)))
+                    )
+                    .requestHandler(mainRouter)
+                    .listen(8080, asyncResult ->
                     {
-                        startPromise.complete();
-                    }
-                    else
-                    {
-                        startPromise.fail(asyncResult.cause().getMessage());
-                    }
-                });
+                        if (asyncResult.succeeded())
+                        {
+                            startPromise.complete();
+                        }
+                        else
+                        {
+                            startPromise.fail(asyncResult.cause().getMessage());
+                        }
+                    });
+        }
+        catch (Exception exception)
+        {
+            startPromise.fail(exception.getMessage());
+
+
+        }
+
+
     }
 }
 

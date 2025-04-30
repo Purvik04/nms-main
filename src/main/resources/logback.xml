@@ -1,0 +1,19 @@
+<configuration>
+    <!-- Console appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Suppress DEBUG for BouncyCastlePemReader -->
+<!--    <logger name="io.netty.handler.ssl.BouncyCastlePemReader" level="INFO"/>-->
+
+    <!-- Optional: Suppress DEBUG for all Netty packages -->
+<!--    <logger name="io.netty" level="INFO"/>-->
+
+    <!-- Root logger -->
+    <root level="DEBUG">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

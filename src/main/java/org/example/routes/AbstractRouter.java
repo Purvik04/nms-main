@@ -1,11 +1,14 @@
 package org.example.routes;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import org.example.service.DBService;
 import org.example.utils.Constants;
-import org.example.utils.Utils;
+//import org.example.utils.RequestValidator;
+//import org.example.utils.RequestValidator2;
+//import org.example.utils.Utils;
 
 public abstract class AbstractRouter implements RouterHandler
 {
@@ -25,7 +28,7 @@ public abstract class AbstractRouter implements RouterHandler
     {
         context.request().bodyHandler(body ->
         {
-            if (isInvalidBody(body.toString(), context)) return;
+            if (isInvalidBody(body.toJsonObject(), context)) return;
 
             dbService.create(body.toJsonObject(), context);
         });
@@ -35,30 +38,24 @@ public abstract class AbstractRouter implements RouterHandler
     {
         context.request().bodyHandler(body ->
         {
-            var id = context.pathParam(Constants.ID);
+            if (isInvalidId(context.pathParam(Constants.ID), context) || isInvalidBody(body.toJsonObject(), context)) return;
 
-            if (isInvalidId(id, context) || isInvalidBody(body.toString(), context)) return;
-
-            dbService.update(id, body.toJsonObject(), context);
+            dbService.update(context.pathParam(Constants.ID), body.toJsonObject(), context);
         });
     }
 
     protected void handleGetById(RoutingContext context)
     {
-        var id = context.pathParam(Constants.ID);
+        if (isInvalidId(context.pathParam(Constants.ID), context)) return;
 
-        if (isInvalidId(id, context)) return;
-
-        dbService.getById(id, context);
+        dbService.getById(context.pathParam(Constants.ID), context);
     }
 
     protected void handleDelete(RoutingContext context)
     {
-        var id = context.pathParam(Constants.ID);
+        if (isInvalidId(context.pathParam(Constants.ID), context)) return;
 
-        if (isInvalidId(id, context)) return;
-
-        dbService.delete(id, context);
+        dbService.delete(context.pathParam(Constants.ID), context);
     }
 
     private boolean isInvalidId(String id, RoutingContext context)
@@ -73,7 +70,7 @@ public abstract class AbstractRouter implements RouterHandler
         return false;
     }
 
-    private boolean isInvalidBody(String body, RoutingContext context)
+    private boolean isInvalidBody(JsonObject body, RoutingContext context)
     {
         if (body == null || body.isEmpty())
         {
@@ -81,14 +78,18 @@ public abstract class AbstractRouter implements RouterHandler
 
             return true;
         }
-        else if (!Utils.validateRequest(new io.vertx.core.json.JsonObject(body), context))
-        {
-            context.response().setStatusCode(400).end(Constants.MESSAGE_INCORRECT_BODY);
 
-            return true;
-        }
+//        var errorMessage = RequestValidator.validate(Utils.getTableNameFromContext(context), body);
 
-        return false;
+//        if(errorMessage != null)
+//        {
+//            context.response().setStatusCode(400).end(errorMessage);
+//
+//            return true;
+//        }
+
+//        return false;
+        return true;
     }
 
     @Override

@@ -23,7 +23,7 @@ public class DBService
 
     private static final JsonObject formattedRequestBody = new JsonObject();
 
-    private static final String reason = "reason";
+    private static final String FAILURE_REASON = "failure_reason";
 
     public DBService(Vertx vertx)
     {
@@ -96,7 +96,7 @@ public class DBService
                 .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(id)));
 
         // Send the request to the query builder
-        eventBus.request(Constants.EVENTBUS_QUERYBUILDER_ADDRESS, formattedRequestBody,reply ->
+        eventBus.<JsonObject>request(Constants.EVENTBUS_QUERYBUILDER_ADDRESS, formattedRequestBody,reply ->
         {
             if(reply.succeeded())
             {
@@ -129,9 +129,7 @@ public class DBService
 
                         var discoveryProfile = data.getJsonObject(0);
 
-                        var isDiscovered = discoveryProfile.getBoolean(Constants.STATUS, false);
-
-                        if (!isDiscovered)
+                        if (!discoveryProfile.getBoolean(Constants.STATUS, false))
                         {
                             context.response()
                                     .setStatusCode(400)
@@ -150,8 +148,6 @@ public class DBService
                                         .put(Constants.CREDENTIAL_PROFILE_ID, discoveryProfile.getInteger(Constants.CREDENTIAL_PROFILE_ID)));
 
                         sendToQueryBuilder(formattedRequestBody, context);
-
-
                     }
                     else
                     {
@@ -173,11 +169,11 @@ public class DBService
 
     public void sendToQueryBuilder(JsonObject formattedRequest, RoutingContext context)
     {
-        eventBus.request(Constants.EVENTBUS_QUERYBUILDER_ADDRESS, formattedRequest,reply ->
+        eventBus.<JsonObject>request(Constants.EVENTBUS_QUERYBUILDER_ADDRESS, formattedRequest,reply ->
         {
             if(reply.succeeded())
             {
-                executeQuery((JsonObject) reply.result().body() , context);
+                executeQuery(reply.result().body(),context);
             }
             else
             {
@@ -190,13 +186,13 @@ public class DBService
 
     public void executeQuery(JsonObject query, RoutingContext context)
     {
-        eventBus.<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, ar -> {
-
-            if (ar.succeeded())
+        eventBus.<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, asyncResult ->
+        {
+            if (asyncResult.succeeded())
             {
-                var result = ar.result().body();
+                var result = asyncResult.result().body();
 
-                if (result.getBoolean(Constants.SUCCESS, false))
+                if (Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS, false)))
                 {
                     context.response()
                             .setStatusCode(201)
@@ -216,7 +212,7 @@ public class DBService
                 context.response()
                         .setStatusCode(500)
                         .end(new JsonObject()
-                                .put(Constants.ERROR,"DBService failed: " + ar.cause().getMessage())
+                                .put(Constants.ERROR,"DBService failed: " + asyncResult.cause().getMessage())
                                 .encodePrettily());
             }
         });
@@ -267,7 +263,7 @@ public class DBService
                     responseArray.add(new JsonObject()
                             .put(Constants.ID, deviceData.getJsonObject(i).getInteger(Constants.ID))
                             .put(Constants.SUCCESS, false)
-                            .put(reason, "ping failed"));
+                            .put(FAILURE_REASON, "ping failed"));
 
                     idToDeviceMap.put(deviceData.getJsonObject(i).getInteger(Constants.ID), deviceData.getJsonObject(i));
                 }
@@ -333,7 +329,7 @@ public class DBService
                         var step = pluginResult.getString("step");
 
                         response.put(Constants.SUCCESS, success);
-                        response.put(reason, step);
+                        response.put(FAILURE_REASON, step);
                     }
 
                     batchParams.add(new JsonArray()

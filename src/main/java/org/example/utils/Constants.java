@@ -99,5 +99,16 @@ public class Constants
     public static final String EVENT_LOOP_POOL_SIZE = "eventLoopPoolSize";
 
     public static final String WORKER_POOL_SIZE = "workerPoolSize";
+
+
+    public static final String CREDENTIAL_PROFILES_TABLE_NAME = "credential_profiles";
+
+    public static final String DISCOVERY_PROFILES_TABLE_NAME = "discovery_profiles";
+
+    public static final String PROVISIONING_JOBS_TABLE_NAME = "provisioning_jobs";
+
+    public static final String CREDENTIAL_PROFILES_SCHEMA_PATH = "src/main/java/org/example/schemas/credential_profiles.json";
+
+    public static final String DISCOVERY_PROFILES_SCHEMA_PATH = "src/main/java/org/example/schemas/discovery_profiles.json";
 }
 

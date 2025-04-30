@@ -6,14 +6,14 @@ import io.vertx.core.json.JsonArray;
 import org.example.cache.AvailabilityCacheEngine;
 import org.example.utils.Constants;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class PollingSchedulerVerticle extends AbstractVerticle
 {
-    private final Map<Integer, Long> deviceTimerMetricMap = new ConcurrentHashMap<>();
+    private final Map<Integer, Long> deviceTimerMetricMap = new HashMap<>();
 
-    private final Map<Integer, Long> deviceTimerAvailabilityMap = new ConcurrentHashMap<>();
+    private final Map<Integer, Long> deviceTimerAvailabilityMap = new HashMap<>();
 
     private static final long METRIC_POLLING_INTERVAL_MILLIS = 5 * 60 * 1000L; //5 minutes
 

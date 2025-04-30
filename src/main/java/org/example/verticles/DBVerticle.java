@@ -11,6 +11,7 @@ import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.Tuple;
 import org.example.utils.Constants;
+import org.example.utils.TableSchemas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,9 @@ public class DBVerticle extends AbstractVerticle
                 .setPort(Integer.parseInt(Constants.DB_PORT))
                 .setDatabase(Constants.DB_NAME)
                 .setUser(Constants.DB_USER)
-                .setPassword(Constants.DB_PASSWORD);
+                .setPassword(Constants.DB_PASSWORD)
+                .setReconnectAttempts(3)
+                .setReconnectInterval(2000L);
 
         var poolOptions = new PoolOptions()
                 .setMaxSize(10);
@@ -65,68 +68,12 @@ public class DBVerticle extends AbstractVerticle
 
     private void createTables(Promise<Void> startPromise)
     {
-        var credentialProfilesTable = """
-            CREATE TABLE IF NOT EXISTS credential_profiles (
-                id SERIAL PRIMARY KEY,
-                credential_profile_name TEXT UNIQUE NOT NULL,
-                system_type TEXT NOT NULL,
-                credentials JSONB NOT NULL
-            );
-            """;
-
-        var discoveryProfilesTable = """
-            CREATE TABLE IF NOT EXISTS discovery_profiles (
-                id SERIAL PRIMARY KEY,
-                discovery_profile_name TEXT UNIQUE NOT NULL,
-                credential_profile_id INT,
-                ip TEXT NOT NULL,
-                port INT NOT NULL,
-                status BOOLEAN DEFAULT FALSE,
-                FOREIGN KEY (credential_profile_id) REFERENCES credential_profiles(id) ON DELETE RESTRICT
-            );
-            """;
-
-        var provisioningJobsTable = """
-           CREATE TABLE IF NOT EXISTS provisioning_jobs (
-                id SERIAL PRIMARY KEY,
-                credential_profile_id INT,
-                ip TEXT NOT NULL UNIQUE,
-                port INT NOT NULL,
-                FOREIGN KEY (credential_profile_id) REFERENCES credential_profiles(id) ON DELETE RESTRICT
-            );
-           """;
-
-        var provisionedDataTable = """
-            CREATE TABLE IF NOT EXISTS provisioned_data (
-                id SERIAL PRIMARY KEY,
-                job_id INT NOT NULL REFERENCES provisioning_jobs(id) ON DELETE CASCADE,
-                data JSONB NOT NULL,
-                polled_at TEXT NOT NULL
-            );
-            """;
-
-        var usersTable= """
-           CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-           );
-           """;
-
-        var queries = new String[] {
-                credentialProfilesTable,
-                discoveryProfilesTable,
-                provisioningJobsTable,
-                provisionedDataTable,
-                usersTable
-        };
-
-        executeBatch(queries, 0, startPromise);
+        executeBatch(TableSchemas.getAllSchemas(), 0, startPromise);
     }
 
-    private void executeBatch(String[] queries, int index, Promise<Void> promise)
+    private void executeBatch(List<String> queries, int index, Promise<Void> promise)
     {
-        if (index >= queries.length)
+        if (index >= queries.size())
         {
             logger.info("All tables are verified/created.");
 
@@ -135,7 +82,7 @@ public class DBVerticle extends AbstractVerticle
             return;
         }
 
-        client.query(queries[index]).execute(ar ->
+        client.query(queries.get(index)).execute(ar ->
         {
             if (ar.succeeded())
             {
@@ -170,7 +117,8 @@ public class DBVerticle extends AbstractVerticle
 
                     var tuple = Tuple.tuple();
 
-                    for (int j = 0; j < inner.size(); j++) {
+                    for (int j = 0; j < inner.size(); j++)
+                    {
                         tuple.addValue(inner.getValue(j));
                     }
                     batchParams.add(tuple);
