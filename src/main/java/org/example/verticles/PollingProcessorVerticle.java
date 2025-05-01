@@ -30,73 +30,87 @@ public class PollingProcessorVerticle extends AbstractVerticle
 
     private void setUpConsumer(Message<JsonArray> message)
     {
-        var deviceBatch = message.body();
-
-        vertx.executeBlocking(()-> Utils.runGoPlugin(deviceBatch, Constants.METRICS), false, res ->
+        try
         {
-            if (res.succeeded())
-            {
-                var pluginOutput = res.result();
+            var deviceBatch = message.body();
 
-                if (pluginOutput.isEmpty())
+            vertx.executeBlocking(()-> Utils.runGoPlugin(deviceBatch, Constants.METRICS), false, res ->
+            {
+                if (res.succeeded())
                 {
-                    logger.error("Go plugin execution failed");
+                    var pluginOutput = res.result();
 
-                    return;
+                    if (pluginOutput.isEmpty())
+                    {
+                        logger.error("Go plugin execution failed");
+
+                        return;
+                    }
+
+                    var processedData = new JsonArray(pluginOutput);
+
+                    logger.info("Plugin processed batch, sending {} entries to DB", processedData.size());
+
+                    sendToDatabase(processedData);
                 }
-
-                var processedData = new JsonArray(pluginOutput);
-
-                logger.info("Plugin processed batch, sending {} entries to DB", processedData.size());
-
-                sendToDatabase(processedData);
-            }
-            else
-            {
-                logger.error(res.cause().getMessage());
-            }
-        });
+                else
+                {
+                    logger.error(res.cause().getMessage());
+                }
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.error("Error in Polling Processing: {}", exception.getMessage());
+        }
     }
 
 
     private void sendToDatabase(JsonArray polledResults)
     {
-        var batchParams = new JsonArray();
-
-        for (int i = 0; i < polledResults.size(); i++){
-
-            var deviceResult = polledResults.getJsonObject(i);
-
-            batchParams.add(new JsonArray()
-                    .add(deviceResult.getInteger(Constants.ID))
-                    .add(deviceResult.getJsonObject(Constants.DATA))
-                    .add(deviceResult.getString(Constants.POLLED_AT)));
-        }
-
-        var request = new JsonObject()
-                .put(Constants.QUERY, QUERY_INSERT_PROVISIONED_DATA)
-                .put(Constants.PARAMS, batchParams);
-
-        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, request, reply ->
+        try
         {
-            if (reply.succeeded())
-            {
-                var response = reply.result().body();
+            var batchParams = new JsonArray();
 
-                if (response.getBoolean(Constants.SUCCESS))
+            for (int i = 0; i < polledResults.size(); i++){
+
+                var deviceResult = polledResults.getJsonObject(i);
+
+                batchParams.add(new JsonArray()
+                        .add(deviceResult.getInteger(Constants.ID))
+                        .add(deviceResult.getJsonObject(Constants.DATA))
+                        .add(deviceResult.getString(Constants.POLLED_AT)));
+            }
+
+            var request = new JsonObject()
+                    .put(Constants.QUERY, QUERY_INSERT_PROVISIONED_DATA)
+                    .put(Constants.PARAMS, batchParams);
+
+            vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, request, reply ->
+            {
+                if (reply.succeeded())
                 {
-                    logger.info("Batch update of provisioned data successful");
+                    var response = reply.result().body();
+
+                    if (Boolean.TRUE.equals(response.getBoolean(Constants.SUCCESS)))
+                    {
+                        logger.info("Batch update of provisioned data successful");
+                    }
+                    else
+                    {
+                        logger.error("Batch update of provision failed from db: {}", response.getString(Constants.ERROR));
+                    }
                 }
                 else
                 {
-                    logger.error("Batch update of provision failed: {}", response.getString(Constants.ERROR));
+                    logger.error("Batch update of provision failed: {}", reply.cause().getMessage());
                 }
-            }
-            else
-            {
-                logger.error("Batch update of provision failed: {}", reply.cause().getMessage());
-            }
-        });
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.error("Error in sending to database: {}", exception.getMessage());
+        }
     }
 
     @Override

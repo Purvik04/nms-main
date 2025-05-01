@@ -1,6 +1,7 @@
 package org.example.routes;
 
 import io.vertx.core.Vertx;
+import org.example.service.DBService;
 
 public class CredentialRouter extends AbstractRouter
 {
@@ -8,10 +9,11 @@ public class CredentialRouter extends AbstractRouter
     {
         super(vertx);
     }
-
     @Override
     public void initRoutes()
     {
+        System.out.println("Initializing CredentialRouter...");
+
         router.post("/createCredential").handler(this::handleCreate);
 
         router.get("/getCredentials").handler(dbService::getAll);

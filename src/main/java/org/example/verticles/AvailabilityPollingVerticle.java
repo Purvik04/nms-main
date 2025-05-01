@@ -31,80 +31,96 @@ public class AvailabilityPollingVerticle extends AbstractVerticle
 
     private void handleAvailabilityPolling(Message<JsonArray> message)
     {
-        var deviceIds = message.body();
+        try
+        {
+            var deviceIds = message.body();
 
-        var placeholders = Utils.buildPlaceholders(deviceIds.size());
+            var placeholders = Utils.buildPlaceholders(deviceIds.size());
 
-        var fetchQuery = "SELECT ip, id from provisioning_jobs "+
-                "WHERE id IN (" + placeholders + ")";
+            var fetchQuery = "SELECT ip, id from provisioning_jobs "+
+                    "WHERE id IN (" + placeholders + ")";
 
-        var query = new JsonObject()
-                .put(Constants.QUERY, fetchQuery)
-                .put(Constants.PARAMS, deviceIds);
+            var query = new JsonObject()
+                    .put(Constants.QUERY, fetchQuery)
+                    .put(Constants.PARAMS, deviceIds);
 
-        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query,deliveryOptions, reply ->
+            vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query,deliveryOptions, reply ->
+            {
+                if (reply.succeeded())
+                {
+                    var response = reply.result().body();
+
+                    if(Boolean.TRUE.equals(response.getBoolean(Constants.SUCCESS)))
+                    {
+                        var data = response.getJsonArray(Constants.DATA);
+
+                        if (!data.isEmpty())
+                        {
+                            vertx.executeBlocking(() -> Utils.runFping(data), false, asyncResult ->
+                            {
+                                if (asyncResult.succeeded())
+                                {
+                                    var fpingResults = asyncResult.result();
+
+                                    logger.info("fping results: {}", fpingResults);
+
+                                    if(!fpingResults.isEmpty())
+                                    {
+                                        for (var i = 0; i<fpingResults.size(); i++)
+                                        {
+                                            AvailabilityCacheEngine.setDeviceStatus(fpingResults.getJsonObject(i).getInteger(Constants.ID), fpingResults.getJsonObject(i).getString(Constants.STATUS));
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.error("Error in availability polling: {}", exception.getMessage());
+        }
+    }
+
+    private void handleDBResponse(AsyncResult<Message<JsonObject>> reply, Promise<Void> startPromise)
+    {
+        try
         {
             if (reply.succeeded())
             {
                 var response = reply.result().body();
 
-                if(response.getBoolean(Constants.SUCCESS))
+                if(Boolean.TRUE.equals(response.getBoolean(Constants.SUCCESS)))
                 {
                     var data = response.getJsonArray(Constants.DATA);
 
                     if (!data.isEmpty())
                     {
-                        vertx.executeBlocking(() -> Utils.runFping(data), false, asyncResult ->
+                        for(var i = 0 ; i < data.size(); i++)
                         {
-                            if (asyncResult.succeeded())
-                            {
-                                var fpingResults = asyncResult.result();
-
-                                logger.info("fping results: {}", fpingResults);
-
-                                if(!fpingResults.isEmpty())
-                                {
-                                    for (var i = 0; i<fpingResults.size(); i++)
-                                    {
-                                        AvailabilityCacheEngine.setDeviceStatus(fpingResults.getJsonObject(i).getInteger(Constants.ID), fpingResults.getJsonObject(i).getString(Constants.STATUS));
-                                    }
-                                }
-                            }
-                        });
+                            AvailabilityCacheEngine.setDeviceStatus(data.getJsonObject(i).getInteger(Constants.ID),Constants.DOWN);
+                        }
                     }
+
+                    startPromise.complete();
                 }
-            }
-        });
-    }
-
-    private void handleDBResponse(AsyncResult<Message<JsonObject>> reply, Promise<Void> startPromise)
-    {
-        if (reply.succeeded())
-        {
-            var response = reply.result().body();
-
-            if(response.getBoolean(Constants.SUCCESS))
-            {
-                var data = response.getJsonArray(Constants.DATA);
-
-                if (!data.isEmpty())
+                else
                 {
-                    for(var i = 0 ; i < data.size(); i++)
-                    {
-                        AvailabilityCacheEngine.setDeviceStatus(data.getJsonObject(i).getInteger(Constants.ID),Constants.DOWN);
-                    }
+                    startPromise.fail("Failed to fetch devices from database");
                 }
-
-                startPromise.complete();
             }
             else
             {
-                startPromise.fail("Failed to fetch devices from database");
+                startPromise.fail("Database request failed: " + reply.cause().getMessage());
             }
         }
-        else
+        catch (Exception exception)
         {
-            startPromise.fail("Database request failed: " + reply.cause().getMessage());
+            logger.error("Error in handleDBResponse: {}", exception.getMessage());
+
+            startPromise.fail("Error in handleDBResponse: " + exception.getMessage());
         }
     }
 }

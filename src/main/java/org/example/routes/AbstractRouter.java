@@ -7,12 +7,12 @@ import io.vertx.ext.web.RoutingContext;
 import org.example.service.DBService;
 import org.example.utils.Constants;
 import org.example.utils.RequestValidator;
-import org.example.utils.RequestValidator2;
 import org.example.utils.Utils;
 
 public abstract class AbstractRouter implements RouterHandler
 {
     protected final Router router;
+
     protected final DBService dbService;
 
     protected AbstractRouter(Vertx vertx)

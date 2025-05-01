@@ -1,10 +1,7 @@
 package org.example.utils;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.json.schema.Draft;
-import io.vertx.json.schema.JsonSchema;
-import io.vertx.json.schema.JsonSchemaOptions;
-import io.vertx.json.schema.Validator;
+import io.vertx.json.schema.*;
 import org.example.Main;
 
 import java.util.HashMap;
@@ -17,8 +14,13 @@ public class RequestValidator
 {
     private static final Map<String, JsonSchema> schemaCache = new HashMap<>();
     private static JsonSchemaOptions options;
-    private static final String ERROR_FORMATTER_SEMICOLON = "; ";
+    private static final String ERROR_FORMATTER_SEMICOLON = "\n";
     private static final String ERROR_FORMATTER_COLON = ": ";
+
+    /**
+     * Private constructor to prevent instantiation
+     */
+    private RequestValidator() {}
 
     /**
      * Initialize the validator and load schemas from files into the schemaCache
@@ -27,10 +29,12 @@ public class RequestValidator
     {
         options = new JsonSchemaOptions()
                 .setDraft(Draft.DRAFT7)
-                .setBaseUri("http://localhost:8080");
+                .setBaseUri("http://localhost:8080")
+                .setOutputFormat(OutputFormat.Basic);
 
         // Load schemas during initialization
         loadSchema(Constants.CREDENTIAL_PROFILES_TABLE_NAME, Constants.CREDENTIAL_PROFILES_SCHEMA_PATH);
+
         loadSchema(Constants.DISCOVERY_PROFILES_TABLE_NAME, Constants.DISCOVERY_PROFILES_SCHEMA_PATH);
     }
 

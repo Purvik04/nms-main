@@ -48,10 +48,6 @@ public class Constants
 
     public static final String MESSAGE_ID_REQUIRED = "ID is required";
 
-    public static final String MESSAGE_INCORRECT_BODY = "Incorrect body";
-
-    public static final String MESSAGE_WRONG_IPV4_ADDRESS = "Wrong IPv4 address";
-
     public static final String  QUERY = "query";
 
     public static final String  PARAMS = "params";
@@ -106,6 +102,8 @@ public class Constants
     public static final String DISCOVERY_PROFILES_TABLE_NAME = "discovery_profiles";
 
     public static final String PROVISIONING_JOBS_TABLE_NAME = "provisioning_jobs";
+
+    public static final String PROVISIONED_DATA_TABLE_NAME = "provisioned_data";
 
     public static final String CREDENTIAL_PROFILES_SCHEMA_PATH = "src/main/java/org/example/schemas/credential_profiles.json";
 

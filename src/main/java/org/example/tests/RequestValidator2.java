@@ -1,4 +1,4 @@
-package org.example.utils;
+package org.example.tests;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.JsonSchema;
@@ -6,6 +6,7 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
 import org.example.Main;
+import org.example.utils.Constants;
 
 import java.util.*;
 

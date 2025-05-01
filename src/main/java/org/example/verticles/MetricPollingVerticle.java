@@ -25,62 +25,69 @@ public class MetricPollingVerticle extends AbstractVerticle
 
     private void handleMetricPolling(Message<JsonArray> message)
     {
-        var deviceIds = message.body();
-
-        logger.info("Received device ids: {}", deviceIds);
-
-        var filteredIds = filterUpDevices(deviceIds);
-
-        if (filteredIds.isEmpty())
+        try
         {
-            logger.warn("No devices are UP for IDs: {}", deviceIds);
+            var deviceIds = message.body();
 
-            return;
-        }
+            logger.info("Received device ids: {}", deviceIds);
 
-        var placeholders = Utils.buildPlaceholders(filteredIds.size());
+            var filteredIds = filterUpDevices(deviceIds);
 
-        var fetchJobs = "SELECT pj.id AS id, pj.ip, pj.port, cp.credentials, cp.system_type FROM provisioning_jobs pj " +
-                "JOIN credential_profiles cp ON pj.credential_profile_id = cp.id " +
-                "WHERE pj.id IN (" + placeholders + ") ORDER BY pj.id";
-
-        var query = new JsonObject()
-                .put(Constants.QUERY, fetchJobs)
-                .put(Constants.PARAMS, filteredIds);
-
-        vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, asyncResult ->
-        {
-            if (asyncResult.succeeded())
+            if (filteredIds.isEmpty())
             {
-                var response = asyncResult.result().body();
+                logger.warn("No devices are UP for IDs: {}", deviceIds);
 
-                if (response.getBoolean(Constants.SUCCESS))
+                return;
+            }
+
+            var placeholders = Utils.buildPlaceholders(filteredIds.size());
+
+            var fetchJobs = "SELECT pj.id AS id, pj.ip, pj.port, cp.credentials, cp.system_type FROM provisioning_jobs pj " +
+                    "JOIN credential_profiles cp ON pj.credential_profile_id = cp.id " +
+                    "WHERE pj.id IN (" + placeholders + ") ORDER BY pj.id";
+
+            var query = new JsonObject()
+                    .put(Constants.QUERY, fetchJobs)
+                    .put(Constants.PARAMS, filteredIds);
+
+            vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, asyncResult ->
+            {
+                if (asyncResult.succeeded())
                 {
-                    var data = response.getJsonArray(Constants.DATA);
+                    var result = asyncResult.result().body();
 
-                    if (!data.isEmpty())
+                    if (Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
                     {
-                        logger.info("Sending batch of size {} to PollingProcessor", data.size());
+                        var data = result.getJsonArray(Constants.DATA);
 
-                        logger.info(data.toString());
+                        if (!data.isEmpty())
+                        {
+                            logger.info("Sending batch of size {} to PollingProcessor", data.size());
 
-                        vertx.eventBus().send(Constants.EVENTBUS_POLLING_PROCESSOR_ADDRESS, data);
+                            logger.info(data.toString());
+
+                            vertx.eventBus().send(Constants.EVENTBUS_POLLING_PROCESSOR_ADDRESS, data);
+                        }
+                        else
+                        {
+                            logger.warn("No data found for device ids: {}", filteredIds);
+                        }
                     }
                     else
                     {
-                        logger.warn("No data found for device ids: {}", filteredIds);
+                        logger.error("Failed to fetch devices from database: {}", result.getString(Constants.ERROR));
                     }
                 }
                 else
                 {
-                    logger.error("Failed to fetch devices from database: {}", response.getString(Constants.ERROR));
+                    logger.error("Database request failed: {}", asyncResult.cause().getMessage());
                 }
-            }
-            else
-            {
-                logger.error("Database request failed: {}", asyncResult.cause().getMessage());
-            }
-        });
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.error("Error in metric polling: {}", exception.getMessage());
+        }
 
     }
 
@@ -88,14 +95,21 @@ public class MetricPollingVerticle extends AbstractVerticle
     {
         var filteredIds = new JsonArray();
 
-        for (int i = 0; i < deviceIds.size(); i++)
+        try
         {
-            var deviceId = deviceIds.getInteger(i);
-
-            if (AvailabilityCacheEngine.getDeviceStatus(deviceId).equalsIgnoreCase(Constants.UP))
+            for (int i = 0; i < deviceIds.size(); i++)
             {
-                filteredIds.add(deviceId);
+                if (AvailabilityCacheEngine.getDeviceStatus(deviceIds.getInteger(i)).equalsIgnoreCase(Constants.UP))
+                {
+                    filteredIds.add(deviceIds.getInteger(i));
+                }
             }
+        }
+        catch (Exception exception)
+        {
+            logger.error("Error filtering UP devices: {}", exception.getMessage());
+
+            return filteredIds.clear();
         }
 
         return filteredIds;

@@ -11,7 +11,7 @@ import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.Tuple;
 import org.example.utils.Constants;
-import org.example.utils.TableSchemas;
+import org.example.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +68,7 @@ public class DBVerticle extends AbstractVerticle
 
     private void createTables(Promise<Void> startPromise)
     {
-        executeBatch(TableSchemas.getAllSchemas(), 0, startPromise);
+        executeBatch(Utils.getAllSchemas(), 0, startPromise);
     }
 
     private void executeBatch(List<String> queries, int index, Promise<Void> promise)

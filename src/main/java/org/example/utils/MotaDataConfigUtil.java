@@ -26,9 +26,9 @@ public class MotaDataConfigUtil
 
             config = new JsonObject(content);
         }
-        catch (IOException e)
+        catch (Exception exception)
         {
-            throw new RuntimeException("Failed to load config file: " + path, e);
+            throw new RuntimeException("Failed to load config file: " + path, exception);
         }
     }
 
