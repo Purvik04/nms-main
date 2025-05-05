@@ -2,8 +2,11 @@ package org.example.utils;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.json.schema.*;
-import org.example.Main;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,10 +15,19 @@ import java.util.Map;
  */
 public class RequestValidator
 {
-    private static final Map<String, JsonSchema> schemaCache = new HashMap<>();
+    private static final Map<String, JsonSchema> SCHEMA_CACHE = new HashMap<>();
+
+    private static final String BASE_URI = "http://localhost:8080/";
+
+    private static final String SCHEMA_NOT_FOUND = "Schema not found";
+
+    private static final String VALIDATION_FAILED = "Validation failed";
+
+    private static final String EXCEPTION_FORMATION = "Validation failed: %s %s";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RequestValidator.class);
+
     private static JsonSchemaOptions options;
-    private static final String ERROR_FORMATTER_SEMICOLON = "\n";
-    private static final String ERROR_FORMATTER_COLON = ": ";
 
     /**
      * Private constructor to prevent instantiation
@@ -23,19 +35,22 @@ public class RequestValidator
     private RequestValidator() {}
 
     /**
-     * Initialize the validator and load schemas from files into the schemaCache
+     * Initialize the validator and load schemas from files into the SCHEMA_CACHE
      */
-    public static void initialize()
+    public static synchronized void initialize() throws IOException,NullPointerException
     {
-        options = new JsonSchemaOptions()
-                .setDraft(Draft.DRAFT7)
-                .setBaseUri("http://localhost:8080")
-                .setOutputFormat(OutputFormat.Basic);
+        if(SCHEMA_CACHE.isEmpty())
+        {
+            options = new JsonSchemaOptions()
+                    .setDraft(Draft.DRAFT7)
+                    .setBaseUri(BASE_URI)
+                    .setOutputFormat(OutputFormat.Basic);
 
-        // Load schemas during initialization
-        loadSchema(Constants.CREDENTIAL_PROFILES_TABLE_NAME, Constants.CREDENTIAL_PROFILES_SCHEMA_PATH);
+            // Load schemas during initialization
+            loadSchema(Constants.CREDENTIAL_PROFILES_TABLE_NAME, Constants.CREDENTIAL_PROFILES_SCHEMA_PATH);
 
-        loadSchema(Constants.DISCOVERY_PROFILES_TABLE_NAME, Constants.DISCOVERY_PROFILES_SCHEMA_PATH);
+            loadSchema(Constants.DISCOVERY_PROFILES_TABLE_NAME, Constants.DISCOVERY_PROFILES_SCHEMA_PATH);
+        }
     }
 
     /**
@@ -43,62 +58,65 @@ public class RequestValidator
      * @param schemaName Name to reference the schema
      * @param filePath Path to the schema file
      */
-    public static void loadSchema(String schemaName, String filePath)
+    public static void loadSchema(String schemaName, String filePath) throws IOException,NullPointerException
     {
-        try
+        try(var inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(filePath))
         {
-            var schemaContent = Main.getVertx().fileSystem().readFileBlocking(filePath).toString();
+            if (inputStream == null)
+            {
+                throw new NullPointerException("Schema not found in classpath: " + filePath);
+            }
 
-            // Parse the schema content and cache it
-            schemaCache.put(schemaName, JsonSchema.of(new JsonObject(schemaContent)));
+            SCHEMA_CACHE.put(schemaName, JsonSchema.of(new JsonObject(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8))));
         }
-        catch (Exception exception)
-        {
-            throw new RuntimeException("Failed to load schema from " + filePath, exception);
-        }
+
     }
 
     /**
      * Validates a request body against a named schema
-     * @param schemaName The name of the schema to validate against
-     * @param requestBody The JSON request body to validate
-     * @return ValidationResult containing success status and error messages if any
+     * @param schema The name of the schema to validate against
+     * @param request The JSON request body to validate
+     * @return String containing validation errors or an empty string if valid
      */
-    public static String validate(String schemaName, JsonObject requestBody)
+    public static String validate(String schema, JsonObject request)
     {
-        if (schemaCache.get(schemaName) == null)
+        if (SCHEMA_CACHE.get(schema) == null)
         {
-            return "Schema not found";
+            return SCHEMA_NOT_FOUND;
         }
 
         try
         {
-            var result = Validator.create(schemaCache.get(schemaName), options).validate(requestBody);
+            var result = Validator.create(SCHEMA_CACHE.get(schema), options).validate(request);
 
             if (Boolean.TRUE.equals(result.getValid()))
             {
-                return null;
+                return Constants.EMPTY_STRING;
             }
             else
             {
-                var errorMessage = new StringBuilder();
+                var errorMessage = new StringBuilder(1000);
 
-                result.getErrors().forEach(error ->
+                if(!result.getErrors().isEmpty())
                 {
-                    if (!errorMessage.isEmpty())
-                    {
-                        errorMessage.append(ERROR_FORMATTER_SEMICOLON);
-                    }
-
-                    errorMessage.append(error.getInstanceLocation()).append(ERROR_FORMATTER_COLON).append(error.getError());
-                });
-
+                    result.getErrors().forEach(error -> errorMessage.append(error.getInstanceLocation())
+                            .append(Constants.COLON_SEPARATOR)
+                            .append(error.getError())
+                            .append(Constants.SEMICOLON_SEPARATOR)
+                            .append(Constants.LINE_SEPARATOR));
+                }
+                else
+                {
+                    errorMessage.append(VALIDATION_FAILED);
+                }
                 return errorMessage.toString();
             }
         }
         catch (Exception exception)
         {
-            return "Validation failed: " + exception.getMessage();
+            LOGGER.error("Unexpected exception while validating: {}", exception.getMessage());
+
+            return String.format(EXCEPTION_FORMATION, VALIDATION_FAILED, exception.getMessage());
         }
     }
 }

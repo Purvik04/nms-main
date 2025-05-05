@@ -5,16 +5,30 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class Utils
 {
-    private static final Logger logger = LoggerFactory.getLogger(Utils.class);
+    private Utils(){}
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
+
+    private static final String HTTP_METHOD_POST = "POST";
+
+    private static final String HTTP_METHOD_DELETE = "DELETE";
+
+    private static final int LOSS_PERCENTAGE_100 = 100;
+
+    private static final int DEFAULT_PACKET_SEND = 3;
+
+    private static final int DEFAULT_PACKET_RECEIVE = 0;
+
+    private static final String SECURE_COMPRESSED_FILE_PATH = "devices.snappy.aes.b64.txt";
+
 
     public static String buildWhereClause(JsonObject conditions, JsonArray params, int paramStartIndex)
     {
@@ -54,136 +68,163 @@ public class Utils
     {
         try
         {
-            String path  = context.normalizedPath().split("/")[2];
+            String path  = context.normalizedPath().split(Constants.PATH_SEPARATOR)[2];
 
             var method = context.request().method().name();
 
             return switch (path)
             {
-                case Constants.CREDENTIALS -> Constants.CREDENTIAL_PROFILES_TABLE_NAME;
+                case Constants.CREDENTIALS_PATH -> Constants.CREDENTIAL_PROFILES_TABLE_NAME;
 
-                case Constants.DISCOVERY -> Constants.DISCOVERY_PROFILES_TABLE_NAME;
+                case Constants.DISCOVERY_PATH -> Constants.DISCOVERY_PROFILES_TABLE_NAME;
 
-                case Constants.PROVISION -> (method.equals("POST") || method.equals("DELETE"))
+                case Constants.PROVISION_PATH -> (method.equals(HTTP_METHOD_POST) || method.equals(HTTP_METHOD_DELETE))
                         ? Constants.PROVISIONING_JOBS_TABLE_NAME
                         : Constants.PROVISIONED_DATA_TABLE_NAME;
 
-                default -> "";
+                default -> Constants.EMPTY_STRING;
             };
         }
         catch (Exception exception)
         {
-            logger.error("Error getting table name from context: {}", exception.getMessage());
+            LOGGER.error("Error getting table name from context: {}", exception.getMessage());
 
-            return "";
+            return Constants.EMPTY_STRING;
         }
     }
 
     public static JsonArray runFping(JsonArray devices)
+{
+    Process process = null;
+
+    try
     {
+        var ipToIdMap = new HashMap<String, Integer>();
+
+        var ipList = new ArrayList<String>(devices.size());
+
+        for (int i = 0; i < devices.size(); i++)
+        {
+            ipList.add(devices.getJsonObject(i).getString(Constants.IP));
+
+            ipToIdMap.put(devices.getJsonObject(i).getString(Constants.IP),
+                    devices.getJsonObject(i).getInteger(Constants.ID));
+        }
+
+        devices.clear();
+
+        var command = new ArrayList<String>();
+
+        command.add("fping");
+        command.add("-c");
+        command.add("3");
+        command.add("-q");
+        command.add("-t");
+        command.add("500");
+        command.add("-p");
+        command.add("0");
+        command.addAll(ipList);
+
+        process = new ProcessBuilder(command).start();
+
+        try (var reader = new BufferedReader(new InputStreamReader(process.getErrorStream())))
+        {
+            String line;
+
+            while ((line = reader.readLine()) != null)
+            {
+                var ip = line.split(Constants.COLON_SEPARATOR)[0].trim();
+
+                var isDown = line.contains("100%");
+
+                devices.add(new JsonObject()
+                        .put(Constants.ID, ipToIdMap.get(ip))
+                        .put(Constants.STATUS, isDown ? Constants.DOWN : Constants.UP));
+            }
+        }
+
+        if (!process.waitFor(1, TimeUnit.SECONDS))
+        {
+            LOGGER.error("Ping Process timeout! Process killed.");
+
+            process.destroyForcibly();
+
+            return devices; // Empty response on timeout
+        }
+
+        var exitCode = process.exitValue();
+
+        if (exitCode != 0 && exitCode != 1)
+        {
+            LOGGER.error("fping exited abnormally with code {}", exitCode);
+
+            return new JsonArray(); // Empty response on abnormal exit
+        }
+
+        return devices;
+    }
+    catch (Exception exception)
+    {
+        Thread.currentThread().interrupt();
+
+        LOGGER.error("Error during fping execution: {}", exception.getMessage());
+
+        return new JsonArray();
+    }
+    finally
+    {
+        if (process != null && process.isAlive())
+        {
+            process.destroyForcibly();
+        }
+    }
+}
+
+
+    private static void parseFpingResult(String summaryLine, JsonObject result, int id)
+    {
+        try
+        {
+            // Example: 192.168.1.1 : xmt/rcv/%loss = 3/3/0%, min/avg/max = ...
+            var parts = summaryLine.split(Constants.EQUALS_SEPARATOR);
+
+            if (parts.length >= 2)
+            {
+                var stats = parts[1].split(Constants.COMMA_SEPARATOR)[0].trim().split(Constants.PATH_SEPARATOR);
+
+                var loss = Integer.parseInt(stats[2].replace(Constants.PERCENTAGE_SEPARATOR, Constants.EMPTY_STRING));
+
+                result.put(Constants.ID, id).put(Constants.PACKET_SEND, Integer.parseInt(stats[0]))
+                        .put(Constants.PACKET_RECEIVE, Integer.parseInt(stats[1]))
+                        .put(Constants.PACKET_LOSS_PERCENTAGE,loss)
+                        .put(Constants.STATUS, loss == LOSS_PERCENTAGE_100 ? Constants.DOWN : Constants.UP);
+            }
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in parsing ping result: {}", exception.getMessage());
+
+            result.put(Constants.ID, id).put(Constants.PACKET_SEND,DEFAULT_PACKET_SEND)
+                    .put(Constants.PACKET_RECEIVE,DEFAULT_PACKET_RECEIVE)
+                    .put(Constants.PACKET_LOSS_PERCENTAGE,LOSS_PERCENTAGE_100).put(Constants.STATUS, Constants.DOWN);
+        }
+    }
+
+    public static JsonArray runGoPluginSecure(JsonArray devices , String mode)
+    {
+        var result = new JsonArray();
+
+        var file = new File(SECURE_COMPRESSED_FILE_PATH);
+
+        var filePath = file.getAbsolutePath();
+
         Process process = null;
 
         try
         {
-            var ipToIdMap = new HashMap<String, Integer>();
+            SecureCompressor.writeEncryptedSnappyFile(devices,filePath);
 
-            var ipList = new ArrayList<String>(devices.size());
-
-            for (int i = 0; i < devices.size(); i++)
-            {
-                var device = devices.getJsonObject(i);
-
-                ipList.add(device.getString(Constants.IP));
-
-                ipToIdMap.put(device.getString(Constants.IP), device.getInteger(Constants.ID));
-            }
-
-            devices.clear();
-
-            var command = new ArrayList<String>();
-
-            command.add("fping");
-            command.add("-c");
-            command.add("3");
-            command.add("-q");
-            command.add("-t");
-            command.add("500");
-            command.add("-p");
-            command.add("0");
-            command.addAll(ipList);
-
-            process = new ProcessBuilder(command).start();
-
-            try (var reader = new BufferedReader(new InputStreamReader(process.getErrorStream())))
-            {
-                String line;
-
-                while ((line = reader.readLine()) != null)
-                {
-                    var ip = line.split(":")[0].trim();
-
-                    var isDown = line.contains("100%");
-
-                    devices.add(new JsonObject()
-                            .put(Constants.ID, ipToIdMap.get(ip))
-                            .put(Constants.STATUS, isDown ? Constants.DOWN : Constants.UP));
-                }
-            }
-
-            if (!process.waitFor(1, TimeUnit.SECONDS))
-            {
-                logger.error("fping timeout! Process killed.");
-
-                process.destroyForcibly();
-
-                return new JsonArray(); // Empty response on timeout
-            }
-
-            var exitCode = process.exitValue();
-
-            if (exitCode != 0 && exitCode != 1)
-            {
-                logger.error("fping exited abnormally with code {}", exitCode);
-
-                return new JsonArray(); // Empty response on abnormal exit
-            }
-
-            return devices;
-        }
-        catch (Exception exception)
-        {
-            Thread.currentThread().interrupt();
-
-            logger.error("Error during fping execution: {}", exception.getMessage());
-
-            return new JsonArray();
-        }
-        finally
-        {
-            if (process != null && process.isAlive())
-            {
-                process.destroyForcibly();
-            }
-        }
-    }
-
-    //todo :- change String to JsonArray after integrating new plugin
-    public static String runGoPlugin(JsonArray devices , String mode)
-    {
-        var output = new StringBuilder();
-
-        var result = new JsonArray();
-
-        try
-        {
-            var process = new ProcessBuilder("go/ssh-plugin", mode).start();
-
-            try (var writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream())))
-            {
-                writer.write(devices.toString());
-
-                writer.flush();
-            }
+            process = new ProcessBuilder("go/ssh-plugin", mode, filePath).start();
 
             try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream())))
             {
@@ -191,74 +232,62 @@ public class Utils
 
                 while ((line = reader.readLine()) != null)
                 {
-                    output.append(line);
+                    if(mode.equals(Constants.DISCOVERY_MODE))
+                    {
+                        result.add(line.trim());
+                    }
+                    else
+                    {
+                        processPollingResult(result,line);
+                    }
                 }
             }
 
-            var exitCode = process.waitFor();
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
 
-            if (exitCode != 0)
+            if (!finished)
             {
-                logger.warn("Plugin exited with non-zero code: {}",exitCode);
+                LOGGER.warn("Go plugin process timeout exceeded, forcibly terminating.");
 
+                process.destroyForcibly();
             }
+
         }
         catch (Exception exception)
         {
-            logger.error("Error during SSH discovery {}", exception.getMessage());
+            LOGGER.error("Unexpected error in secure plugin execution: {}", exception.getMessage());
+        }
+        finally
+        {
+            if (process != null && process.isAlive())
+            {
+                process.destroyForcibly();
+            }
 
-            return "";
+            // Cleanup temporary file
+            try
+            {
+                Files.deleteIfExists(file.toPath());
+            }
+            catch (Exception exception)
+            {
+                LOGGER.error("Error deleting temp file {}: {}", filePath, exception.getMessage());
+            }
         }
 
-        return output.toString();
+        return result;
     }
 
-    public static List<String> getAllSchemas() {
-        return List.of(
-                """
-                CREATE TABLE IF NOT EXISTS credential_profiles (
-                    id SERIAL PRIMARY KEY,
-                    credential_profile_name TEXT UNIQUE NOT NULL,
-                    system_type TEXT NOT NULL,
-                    credentials JSONB NOT NULL
-                );
-                """,
-                """
-                CREATE TABLE IF NOT EXISTS discovery_profiles (
-                    id SERIAL PRIMARY KEY,
-                    discovery_profile_name TEXT UNIQUE NOT NULL,
-                    credential_profile_id INT,
-                    ip TEXT NOT NULL,
-                    port INT NOT NULL DEFAULT 22,
-                    status BOOLEAN DEFAULT FALSE,
-                    FOREIGN KEY (credential_profile_id) REFERENCES credential_profiles(id) ON DELETE RESTRICT
-                );
-                """,
-                """
-                CREATE TABLE IF NOT EXISTS provisioning_jobs (
-                    id SERIAL PRIMARY KEY,
-                    credential_profile_id INT,
-                    ip TEXT NOT NULL UNIQUE,
-                    port INT NOT NULL,
-                    FOREIGN KEY (credential_profile_id) REFERENCES credential_profiles(id) ON DELETE RESTRICT
-                );
-                """,
-                """
-                CREATE TABLE IF NOT EXISTS provisioned_data (
-                    id SERIAL PRIMARY KEY,
-                    job_id INT NOT NULL REFERENCES provisioning_jobs(id) ON DELETE CASCADE,
-                    data JSONB NOT NULL,
-                    polled_at TEXT NOT NULL
-                );
-                """,
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL
-                );
-                """
-        );
+    public static void processPollingResult(JsonArray devices , String device)
+    {
+        try
+        {
+            devices.add(SecureCompressor.decryptLine(device.trim()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Decryption error for line: {}, error: {}", device, exception.getMessage());
+        }
     }
 
     public static JsonObject buildQuery(JsonObject input, StringBuilder query, JsonArray params)
@@ -359,7 +388,7 @@ public class Utils
         }
         catch (Exception exception)
         {
-            logger.error("Error building query {}", exception.getMessage());
+            LOGGER.error("Error building query {}", exception.getMessage());
 
             return new JsonObject()
                     .put(Constants.SUCCESS, false)

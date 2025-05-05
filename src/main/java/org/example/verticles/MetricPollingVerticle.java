@@ -6,6 +6,8 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.example.cache.AvailabilityCacheEngine;
+import org.example.service.database.Database;
+import org.example.service.database.DatabaseService;
 import org.example.utils.Constants;
 import org.example.utils.Utils;
 import org.slf4j.Logger;
@@ -13,7 +15,9 @@ import org.slf4j.LoggerFactory;
 
 public class MetricPollingVerticle extends AbstractVerticle
 {
-    private static final Logger logger = LoggerFactory.getLogger(MetricPollingVerticle.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MetricPollingVerticle.class);
+
+    private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
     @Override
     public void start(Promise<Void> startPromise)
@@ -29,13 +33,13 @@ public class MetricPollingVerticle extends AbstractVerticle
         {
             var deviceIds = message.body();
 
-            logger.info("Received device ids: {}", deviceIds);
+            LOGGER.info("Received device ids: {}", deviceIds);
 
             var filteredIds = filterUpDevices(deviceIds);
 
             if (filteredIds.isEmpty())
             {
-                logger.warn("No devices are UP for IDs: {}", deviceIds);
+                LOGGER.warn("No devices are UP for IDs: {}", deviceIds);
 
                 return;
             }
@@ -50,43 +54,32 @@ public class MetricPollingVerticle extends AbstractVerticle
                     .put(Constants.QUERY, fetchJobs)
                     .put(Constants.PARAMS, filteredIds);
 
-            vertx.eventBus().<JsonObject>request(Constants.EVENTBUS_DATABASE_ADDRESS, query, asyncResult ->
-            {
-                if (asyncResult.succeeded())
-                {
-                    var result = asyncResult.result().body();
-
-                    if (Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
+            DATABASE_SERVICE.executeQuery(query)
+                    .onSuccess(result ->
                     {
-                        var data = result.getJsonArray(Constants.DATA);
-
-                        if (!data.isEmpty())
+                        if (Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
                         {
-                            logger.info("Sending batch of size {} to PollingProcessor", data.size());
+                            var data = result.getJsonArray(Constants.DATA);
 
-                            logger.info(data.toString());
+                            if (!data.isEmpty())
+                            {
+                                LOGGER.info("Sending batch of size {} to PollingProcessor", data.size());
 
-                            vertx.eventBus().send(Constants.EVENTBUS_POLLING_PROCESSOR_ADDRESS, data);
+                                LOGGER.info(data.toString());
+
+                                vertx.eventBus().send(Constants.EVENTBUS_POLLING_PROCESSOR_ADDRESS, data);
+                            }
+                            else
+                            {
+                                LOGGER.warn("No data found for device ids: {}", filteredIds);
+                            }
                         }
-                        else
-                        {
-                            logger.warn("No data found for device ids: {}", filteredIds);
-                        }
-                    }
-                    else
-                    {
-                        logger.error("Failed to fetch devices from database: {}", result.getString(Constants.ERROR));
-                    }
-                }
-                else
-                {
-                    logger.error("Database request failed: {}", asyncResult.cause().getMessage());
-                }
-            });
+                    })
+                    .onFailure(error -> LOGGER.error("Database request failed: {}", error.getMessage()));
         }
         catch (Exception exception)
         {
-            logger.error("Error in metric polling: {}", exception.getMessage());
+            LOGGER.error("Error in metric polling: {}", exception.getMessage());
         }
 
     }
@@ -94,6 +87,8 @@ public class MetricPollingVerticle extends AbstractVerticle
     private JsonArray filterUpDevices(JsonArray deviceIds)
     {
         var filteredIds = new JsonArray();
+
+        LOGGER.info("ALL Devices: {}", AvailabilityCacheEngine.getAllDeviceStatus());
 
         try
         {
@@ -107,7 +102,7 @@ public class MetricPollingVerticle extends AbstractVerticle
         }
         catch (Exception exception)
         {
-            logger.error("Error filtering UP devices: {}", exception.getMessage());
+            LOGGER.error("Error filtering UP devices: {}", exception.getMessage());
 
             return filteredIds.clear();
         }

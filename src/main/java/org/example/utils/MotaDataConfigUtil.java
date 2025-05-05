@@ -6,9 +6,11 @@ import java.nio.charset.StandardCharsets;
 
 public class MotaDataConfigUtil
 {
+    private MotaDataConfigUtil() {}
+
     private static JsonObject config = null;
 
-    public static synchronized void loadConfig(String path)
+    public static synchronized void loadConfig(String path) throws IOException,NullPointerException
     {
         if (config != null)
         {
@@ -19,16 +21,10 @@ public class MotaDataConfigUtil
         {
             if (inputStream == null)
             {
-                throw new RuntimeException("Config file not found in classpath: " + path);
+                throw new NullPointerException("Config file not found in classpath: " + path);
             }
 
-            var content = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-
-            config = new JsonObject(content);
-        }
-        catch (Exception exception)
-        {
-            throw new RuntimeException("Failed to load config file: " + path, exception);
+            config = new JsonObject(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
         }
     }
 

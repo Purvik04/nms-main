@@ -29,8 +29,4 @@ public class AvailabilityCacheEngine {
     public static void removeDevice(Integer deviceId) {
         deviceStatusMap.remove(deviceId);
     }
-
-    public static void clearAll() {
-        deviceStatusMap.clear();
-    }
 }

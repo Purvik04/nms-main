@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Discovery Profile",
+  "type": "object",
+  "required": [
+    "discovery_profile_name",
+    "credential_profile_id",
+    "ip"
+  ],
+  "properties": {
+    "discovery_profile_name": {
+      "type": "string",
+      "description": "Name of the discovery profile"
+    },
+    "credential_profile_id": {
+      "type": "integer",
+      "description": "ID of the associated credential profile"
+    },
+    "ip": {
+      "type": "string",
+      "format": "ipv4",
+      "description": "IPv4 address for discovery"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Port number for discovery"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,14 @@
+#config.yaml
+ssh:
+  timeout: 5s  # SSH connection timeout in seconds
+
+metrics:
+  commands:
+    hostname: "hostname"
+    uptime: "uptime -p"
+    cpu: "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'"
+    memory: "free -g | awk '/Mem:/ {print $3}'"
+    disk: "df -BG / | awk 'NR==2 {print $3}'"
+    processes: "ps aux | wc -l"
+encryption:
+  key: "0123456789abcdef0123456789abcdef"  # 128-bit AES key (32 hex chars)

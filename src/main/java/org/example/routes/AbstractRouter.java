@@ -1,36 +1,58 @@
 package org.example.routes;
 
-import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import org.example.service.DBService;
+import org.example.cache.AvailabilityCacheEngine;
+import org.example.service.database.DatabaseService;
+import org.example.service.database.Database;
 import org.example.utils.Constants;
 import org.example.utils.RequestValidator;
 import org.example.utils.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractRouter implements RouterHandler
 {
-    protected final Router router;
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractRouter.class);
 
-    protected final DBService dbService;
+    protected static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
-    protected AbstractRouter(Vertx vertx)
-    {
-        this.router = Router.router(vertx);
+    protected static final String ERROR_MESSAGE = "Error while processing request";
 
-        this.dbService = new DBService(vertx);
+    protected final StringBuilder reusableStringQuery = new StringBuilder();
 
-        initRoutes();
-    }
+    protected final JsonArray reusableQueryParams = new JsonArray();
+
+    protected final JsonObject reusableQueryObject = new JsonObject();
 
     protected void handleCreate(RoutingContext context)
     {
         context.request().bodyHandler(body ->
         {
-            if (isInvalidBody(body.toJsonObject(), context)) return;
+            try
+            {
+                if (isInvalidBody(body.toJsonObject(), context)) return;
 
-            dbService.create(body.toJsonObject(), context);
+                setReusableObjects();
+
+                reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
+                        .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                        .put(Constants.DATA, body.toJsonObject());
+
+                var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+
+                DATABASE_SERVICE
+                        .executeQuery(query)
+                        .onSuccess(reply -> context.response().setStatusCode(Constants.SC_201).end(reply.encode()))
+                        .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+            }
+            catch (Exception exception)
+            {
+                LOGGER.error(ERROR_MESSAGE, exception);
+
+                context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
+            }
         });
     }
 
@@ -38,31 +60,137 @@ public abstract class AbstractRouter implements RouterHandler
     {
         context.request().bodyHandler(body ->
         {
-            if (isInvalidId(context.pathParam(Constants.ID), context) || isInvalidBody(body.toJsonObject(), context)) return;
+            try
+            {
+                if (isInvalidId(context.pathParam(Constants.ID), context) || isInvalidBody(body.toJsonObject(), context)) return;
 
-            dbService.update(context.pathParam(Constants.ID), body.toJsonObject(), context);
+                setReusableObjects();
+
+                reusableQueryObject
+                        .put(Constants.OPERATION, Constants.DB_UPDATE)
+                        .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                        .put(Constants.DATA, body.toJsonObject())
+                        .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(context.pathParam(Constants.ID))));
+
+                var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+
+                DATABASE_SERVICE
+                        .executeQuery(query)
+                        .onSuccess(reply ->
+                                context.response()
+                                        .setStatusCode(Constants.SC_201)
+                                        .end(reply.toString())
+                        )
+                        .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+            }
+            catch (Exception exception)
+            {
+                LOGGER.error(ERROR_MESSAGE, exception);
+
+                context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
+            }
         });
     }
 
     protected void handleGetById(RoutingContext context)
     {
-        if (isInvalidId(context.pathParam(Constants.ID), context)) return;
+        try
+        {
+            if (isInvalidId(context.pathParam(Constants.ID), context)) return;
 
-        dbService.getById(context.pathParam(Constants.ID), context);
+            setReusableObjects();
+
+            reusableQueryObject
+                    .put(Constants.OPERATION, Constants.DB_SELECT)
+                    .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                    .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(context.pathParam(Constants.ID))));
+
+            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+
+            DATABASE_SERVICE
+                    .executeQuery(query)
+                    .onSuccess(reply ->
+                            context.response()
+                                    .setStatusCode(Constants.SC_200)
+                                    .end(reply.toString())
+                    )
+                    .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error(ERROR_MESSAGE, exception);
+
+            context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
+        }
+
     }
 
     protected void handleDelete(RoutingContext context)
     {
-        if (isInvalidId(context.pathParam(Constants.ID), context)) return;
+        try
+        {
+            if (isInvalidId(context.pathParam(Constants.ID), context)) return;
 
-        dbService.delete(context.pathParam(Constants.ID), context);
+            setReusableObjects();
+
+            reusableQueryObject
+                    .put(Constants.OPERATION, Constants.DB_DELETE)
+                    .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                    .put(Constants.CONDITIONS, new JsonObject().put(Constants.ID, Integer.parseInt(context.pathParam(Constants.ID))));
+
+            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+
+            DATABASE_SERVICE
+                    .executeQuery(query)
+                    .onSuccess(reply ->
+                    {
+                        if(Utils.getTableNameFromContext(context).equals(Constants.PROVISIONING_JOBS_TABLE_NAME))
+                        {
+                            AvailabilityCacheEngine.removeDevice(Integer.parseInt(context.pathParam(Constants.ID)));
+                        }
+
+                        context.response().setStatusCode(Constants.SC_200).end(reply.encode());
+                    })
+                    .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error(ERROR_MESSAGE, exception);
+
+            context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
+        }
+    }
+
+    protected void handleGetAll(RoutingContext context)
+    {
+        try
+        {
+            setReusableObjects();
+
+            reusableQueryObject.put(Constants.OPERATION, Constants.DB_SELECT)
+                    .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context));
+
+            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+
+            DATABASE_SERVICE.executeQuery(query)
+                    .onSuccess(reply -> context.response().setStatusCode(Constants.SC_200)
+                            .end(reply.toString()))
+                    .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error(ERROR_MESSAGE, exception);
+
+            context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
+        }
+
     }
 
     private boolean isInvalidId(String id, RoutingContext context)
     {
-        if (id == null || id.isEmpty())
+        if (id == null || id.isEmpty() || Integer.parseInt(id) < 1)
         {
-            context.response().setStatusCode(400).end(Constants.MESSAGE_ID_REQUIRED);
+            context.response().setStatusCode(Constants.SC_400).end(Constants.MESSAGE_ID_INVALID);
 
             return true;
         }
@@ -70,20 +198,31 @@ public abstract class AbstractRouter implements RouterHandler
         return false;
     }
 
-    private boolean isInvalidBody(JsonObject body, RoutingContext context)
+    protected boolean isInvalidBody(JsonObject body, RoutingContext context)
     {
-        if (body == null || body.isEmpty())
+        try
         {
-            context.response().setStatusCode(400).end(Constants.MESSAGE_BODY_REQUIRED);
+            if (body == null || body.isEmpty())
+            {
+                context.response().setStatusCode(Constants.SC_400).end(Constants.MESSAGE_BODY_REQUIRED);
 
-            return true;
+                return true;
+            }
+
+            var errorMessage = RequestValidator.validate(Utils.getTableNameFromContext(context), body);
+
+            if(!errorMessage.isEmpty())
+            {
+                context.response().setStatusCode(Constants.SC_400).end(errorMessage);
+
+                return true;
+            }
         }
-
-        var errorMessage = RequestValidator.validate(Utils.getTableNameFromContext(context), body);
-
-        if(errorMessage != null)
+        catch (Exception exception)
         {
-            context.response().setStatusCode(400).end(errorMessage);
+            LOGGER.error("Error in validating body:", exception);
+
+            context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
 
             return true;
         }
@@ -91,8 +230,19 @@ public abstract class AbstractRouter implements RouterHandler
         return false;
     }
 
-    @Override
-    public Router getRouter() {
-        return router;
+    protected void dbServiceFailed(RoutingContext context, String errorMessage)
+    {
+        context.response()
+                .setStatusCode(Constants.SC_500)
+                .end(new JsonObject().put(Constants.ERROR, errorMessage).encodePrettily());
+    }
+
+    protected void setReusableObjects()
+    {
+        reusableStringQuery.setLength(0);
+
+        reusableQueryParams.clear();
+
+        reusableQueryObject.clear();
     }
 }

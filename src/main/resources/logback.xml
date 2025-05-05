@@ -6,14 +6,15 @@
         </encoder>
     </appender>
 
-    <!-- Suppress DEBUG for BouncyCastlePemReader -->
-<!--    <logger name="io.netty.handler.ssl.BouncyCastlePemReader" level="INFO"/>-->
-
-    <!-- Optional: Suppress DEBUG for all Netty packages -->
-<!--    <logger name="io.netty" level="INFO"/>-->
-
-    <!-- Root logger -->
-    <root level="DEBUG">
+    <!-- Set all loggers to INFO level by default -->
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
+
+    <!-- Specific logger adjustments -->
+    <logger name="io.netty.handler.ssl.BouncyCastlePemReader" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+
+    <!-- Add any other specific loggers here if needed -->
+    <!-- <logger name="com.yourpackage" level="WARN"/> -->
 </configuration>

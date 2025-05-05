@@ -59,6 +59,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.2</version> <!-- You can update to the latest version -->
+        </dependency>
+
+        <dependency>
             <groupId>com.ongres.scram</groupId>
             <artifactId>client</artifactId>
             <version>2.1</version>
@@ -113,6 +119,19 @@
             <version>4.5.14</version>
             <classifier>processor</classifier>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- pom.xml -->
+        <dependency>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+            <version>1.1.10.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>9.4.0</version> <!-- Use the latest version -->
         </dependency>
 
     </dependencies>

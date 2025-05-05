@@ -1,30 +1,47 @@
 package org.example;
 
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.json.JsonObject;
-import org.example.tests.database.DatabaseVerticle;
+import io.vertx.core.*;
+import org.example.service.database.Database;
 import org.example.utils.Constants;
 import org.example.utils.MotaDataConfigUtil;
+import org.example.utils.VerticleConfig;
 import org.example.verticles.*;
+import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+
 public class Main
 {
-    private static final Logger logger = LoggerFactory.getLogger(Main.class);
+    private static final Vertx VERTX = Vertx.vertx(new VertxOptions().setWorkerPoolSize(20)
+            .setEventLoopPoolSize(Runtime.getRuntime().availableProcessors()));
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
+    private static final int DISCOVERY_VERTICLE_INSTANCES = 1;
+
+    private static final int SERVER_VERTICLE_INSTANCES = 1;
+
+    private static final int POLLING_PROCESSOR_VERTICLE_INSTANCES = 2;
+
+    private static final int DATABASE_VERTICLE_INSTANCES = 2;
+
+    private static final String CONFIG_FILE_PATH = "config.json";
 
     static
     {
-        MotaDataConfigUtil.loadConfig(Constants.CONFIG_FILE_PATH);
+        try
+        {
+            MotaDataConfigUtil.loadConfig(CONFIG_FILE_PATH);
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Failed to load configuration: {}", e.getMessage());
+
+            System.exit(1);
+        }
     }
-
-    private static final JsonObject config = MotaDataConfigUtil.getConfig();
-
-    private static final Vertx VERTX = Vertx.vertx(new VertxOptions()
-                .setEventLoopPoolSize(config.getInteger(Constants.EVENT_LOOP_POOL_SIZE, Runtime.getRuntime().availableProcessors()))
-        .setWorkerPoolSize(config.getInteger(Constants.WORKER_POOL_SIZE, 20)));
 
     public static Vertx getVertx()
     {
@@ -33,64 +50,92 @@ public class Main
 
     public static void main(String[] args)
     {
-        var config = MotaDataConfigUtil.getConfig();
-
-        VERTX.deployVerticle(new NmsServerVerticle())
-                .compose(res ->
+        runFlywayMigrations()
+                .onComplete(res ->
                 {
-                    logger.info("NMS Server Verticle started successfully");
+                    if (res.succeeded())
+                    {
+                        LOGGER.info("Database migration complete.");
 
-//                    var dbOptions = new DeploymentOptions().setInstances(config.getInteger(DBVerticle.class.getSimpleName(), 1));
+                        deployVerticles();
+                    }
+                    else
+                    {
+                        LOGGER.error("Database migration failed: {}", res.cause().getMessage());
+                    }
+                });
+    }
 
-                    return VERTX.deployVerticle(DatabaseVerticle.class.getName());
-                })
-                .compose(res->
-                {
-                    logger.info("DB Verticle started successfully");
+    private static Future<Void> runFlywayMigrations()
+    {
+        var promise = Promise.<Void>promise();
 
-                    return VERTX.deployVerticle(QueryBuilderVerticle.class.getName());
-                })
-//                .compose(res ->
-//                {
-//                    logger.info("QueryBuilderVerticle started successfully");
-//
-//                    var availabilityOptions = new DeploymentOptions()
-//                            .setInstances(config.getInteger(AvailabilityPollingVerticle.class.getSimpleName(), 1));
-//
-//                    return VERTX.deployVerticle(AvailabilityPollingVerticle.class.getName(),availabilityOptions);
-//                })
-//                .compose(res ->
-//                {
-//                    logger.info("AvailabilityPollingVerticle started successfully");
-//
-//                    var pollingOptions = new DeploymentOptions()
-//                            .setInstances(config.getInteger(PollingProcessorVerticle.class.getSimpleName(), 1));
-//
-//                    return VERTX.deployVerticle(PollingProcessorVerticle.class.getName(),pollingOptions);
-//                })
-//                .compose(res->
-//                {
-//                    logger.info("PollingProcessorVerticle started successfully");
-//
-//                    return VERTX.deployVerticle(new MetricPollingVerticle());
-//                })
-//                .compose(res->
-//                {
-//                    logger.info("MetricPollingVerticle started successfully");
-//
-//                    return VERTX.deployVerticle(new PollingSchedulerVerticle());
-//                })
-                .onSuccess(res->
-                {
-                    logger.info("PollingSchedulerVerticle started successfully");
+        try
+        {
+            Flyway flyway = Flyway.configure()
+                    .dataSource("jdbc:postgresql://localhost:5432/nms_lite", "purvik", "admin")
+                    .baselineOnMigrate(true)
+                    .load();
 
-                    logger.info("All Verticles started successfully");
-                })
+            if (flyway.migrate().success)
+            {
+                promise.complete();
+            }
+            else
+            {
+                promise.fail("No migrations were executed.");
+            }
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Flyway migration failed: {}", exception.getMessage());
+
+            promise.fail(exception.getMessage());
+        }
+
+        return promise.future();
+    }
+
+    private static void deployVerticles()
+    {
+        var deploymentSequence = Arrays.asList(
+                new VerticleConfig(Database.class, new DeploymentOptions().setInstances(DATABASE_VERTICLE_INSTANCES)),
+
+                new VerticleConfig(NmsServerVerticle.class, new DeploymentOptions()
+                        .setInstances(SERVER_VERTICLE_INSTANCES)),
+
+                new VerticleConfig(AvailabilityPollingEngine.class, new DeploymentOptions()
+                        .setInstances(1)),
+
+                new VerticleConfig(PollingProcessorEngine.class, new DeploymentOptions()
+                        .setInstances(POLLING_PROCESSOR_VERTICLE_INSTANCES)),
+
+                new VerticleConfig(MetricPollingVerticle.class, new DeploymentOptions()),
+
+                new VerticleConfig(PollerEngine.class, new DeploymentOptions()),
+
+                new VerticleConfig(DiscoveryEngine.class, new DeploymentOptions()
+                        .setInstances(DISCOVERY_VERTICLE_INSTANCES).setWorkerPoolSize(5)
+                        .setWorkerPoolName(Constants.EVENTBUS_DISCOVERY_ADDRESS))
+        );
+
+        var deploymentChain = Future.<Void>succeededFuture();
+
+        for (var verticle : deploymentSequence)
+        {
+            deploymentChain = deploymentChain.compose(res -> VERTX.deployVerticle(verticle.verticleClass.getName(), verticle.options)
+                    .onSuccess(id -> LOGGER.info("{} started successfully",
+                            verticle.verticleClass.getSimpleName()))
+                    .mapEmpty());
+        }
+
+        deploymentChain
+                .onSuccess(res -> LOGGER.info("All verticles started successfully in sequence"))
                 .onFailure(err ->
                 {
-                    logger.error(err.getMessage());
-
+                    LOGGER.error("Deployment failed at {}: {}", err.getStackTrace()[0].getClassName(), err.getMessage());
                     VERTX.close();
                 });
     }
 }
+

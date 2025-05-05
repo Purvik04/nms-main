@@ -1,27 +1,35 @@
 package org.example.routes;
 
-import io.vertx.core.Vertx;
-import org.example.service.DBService;
+import io.vertx.ext.web.Router;
+import org.example.Main;
 
 public class CredentialRouter extends AbstractRouter
 {
-    public CredentialRouter(Vertx vertx)
+    private final Router router;
+
+    public CredentialRouter()
     {
-        super(vertx);
+        this.router = Router.router(Main.getVertx());
+
+        initRoutes();
     }
+
     @Override
     public void initRoutes()
     {
-        System.out.println("Initializing CredentialRouter...");
-
         router.post("/createCredential").handler(this::handleCreate);
 
-        router.get("/getCredentials").handler(dbService::getAll);
+        router.get("/getCredentials").handler(this::handleGetAll);
 
         router.get("/:id").handler(this::handleGetById);
 
         router.put("/:id").handler(this::handleUpdate);
 
         router.delete("/:id").handler(this::handleDelete);
+    }
+
+    @Override
+    public Router getRouter() {
+        return router;
     }
 }

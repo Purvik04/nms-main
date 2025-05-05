@@ -1,20 +1,19 @@
 {
-  "eventLoopPoolSize": 10,
-  "workerPoolSize": 20,
-  "NmsServerVerticle": 1,
-  "DBVerticle": 2,
-  "QueryBuilderVerticle": 1,
-  "AvailabilityPollingVerticle": 1,
-  "PollingProcessorVerticle": 2,
-  "MetricPollingVerticle": 2,
-  "PollingSchedulerVerticle": 1,
-  "eventBus": {
-    "sendTimeout": 5000,
-    "receiveBufferSize": 1024
-  },
+  "go_executable_path": "go/ssh-plugin",
   "ssl_keyStore_path": "keystore.jks",
   "ssl_keyStore_password": "motadata",
   "jwt-secret-key" : "default-secret-key",
   "jwt-encryption-algorithm" : "HS256",
-  "jwtExpiryTimeInSeconds": 3600
+  "jwtExpiryTimeInSeconds": 86400,
+  "db": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "nms_lite",
+    "user": "purvik",
+    "password": "admin"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 8080
+  }
 }
