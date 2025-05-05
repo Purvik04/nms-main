@@ -55,15 +55,6 @@ public class DatabaseClient
                         .using(Main.getVertx())
                         .build();
 
-                instance.getConnection(conn ->
-                {
-                    if (conn.failed())
-                    {
-                        LOGGER.error("DB connection test failed: {}", conn.cause().getMessage());
-
-                        instance = null; // Ensure instance remains null on failure
-                    }
-                });
             }
             catch (Exception exception)
             {
