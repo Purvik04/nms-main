@@ -24,7 +24,7 @@ public class AuthHandler
 
     private static final String JWT_EXPIRY_TIME_IN_SECONDS = "jwtExpiryTimeInSeconds";
 
-    private static final int JWT_EXPIRY_REFRESH_TIME_IN_SECONDS = 604800;
+    private static final int JWT_EXPIRY_REFRESH_TIME_IN_SECONDS = 604800; //1 day
 
     private static final String USERNAME = "username";
 
