@@ -28,14 +28,14 @@ public class DiscoveryEngine_old extends AbstractVerticle
     public void start(Promise<Void> startPromise)
     {
         // Initialize the discovery service
-        vertx.eventBus().localConsumer(Constants.EVENTBUS_DISCOVERY_ADDRESS, this::handleDiscoveryRequest);
+        vertx.eventBus().localConsumer(Constants.DISCOVERY_ADDRESS, this::handleDiscoveryRequest);
 
         startPromise.complete();
     }
 
     private void handleDiscoveryRequest(Message<JsonArray> discoveryRequest)
     {
-        var fetchQuery = "SELECT dp.id, dp.ip, dp.port, cp.credentials FROM discovery_profiles dp " +
+        var fetchQuery = "SELECT dp.id, dp.ip, dp.port, cp.credentials, FROM discovery_profiles dp " +
                 "JOIN credential_profiles cp ON dp.credential_profile_id = cp.id " +
                 "WHERE dp.id IN (" + Utils.buildPlaceholders(discoveryRequest.body().size()) + ")";
 
@@ -53,14 +53,14 @@ public class DiscoveryEngine_old extends AbstractVerticle
                     {
                         var responseArray = new JsonArray();
 
-                        if (asyncResult.getJsonArray(Constants.DATA).isEmpty())
+                        if (asyncResult.getJsonArray(Constants.RESPONSE).isEmpty())
                         {
                             LOGGER.info("No discovery profiles found for IDs: {}",discoveryRequest.body());
 
                             return responseArray;
                         }
 
-                        var deviceData = asyncResult.getJsonArray(Constants.DATA);
+                        var deviceData = asyncResult.getJsonArray(Constants.RESPONSE);
 
                         var idToDeviceMap = new HashMap<Integer, JsonObject>();
 
@@ -77,7 +77,7 @@ public class DiscoveryEngine_old extends AbstractVerticle
                                     deviceData.getJsonObject(i));
                         }
 
-                        var pingResult = Utils.runFping(deviceData);
+                        var pingResult = Utils.ping(deviceData);
 
                         if (pingResult.isEmpty())
                         {
@@ -100,7 +100,7 @@ public class DiscoveryEngine_old extends AbstractVerticle
 
                         LOGGER.info("Processing SSH discovery of : {}", sshFilteredDevices);
 
-                        var pluginOutput = Utils.runGoPluginSecure(sshFilteredDevices, Constants.DISCOVERY_MODE);
+                        var pluginOutput = Utils.spawnGoPlugin(sshFilteredDevices, Constants.DISCOVERY);
 
                         if (pluginOutput.isEmpty())
                         {

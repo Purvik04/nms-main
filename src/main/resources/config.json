@@ -1,19 +1,24 @@
 {
-  "go_executable_path": "go/ssh-plugin",
-  "ssl_keyStore_path": "keystore.jks",
-  "ssl_keyStore_password": "motadata",
-  "jwt-secret-key" : "default-secret-key",
-  "jwt-encryption-algorithm" : "HS256",
+  "go.executable.path": "go/ssh-plugin",
+  "ssl.keyStore.path": "keystore.jks",
+  "ssl.keyStore.password": "motadata",
+  "jwt.secret.key" : "default-secret-key",
+  "jwt.encryption.algorithm" : "HS256",
   "jwtExpiryTimeInSeconds": 86400,
-  "db": {
-    "host": "localhost",
-    "port": 5432,
-    "database": "nms_lite",
-    "user": "purvik",
-    "password": "admin"
-  },
-  "server": {
-    "host": "localhost",
-    "port": 8080
-  }
+  "database.host": "localhost",
+  "database.port" : 5432,
+  "database.name" : "nms_lite",
+  "database.user" : "purvik",
+  "database.password" : "admin",
+  "database.verticle.instances" : 1,
+  "server.verticle.instances" : 1,
+  "polling.processor.engine.instances" : 1,
+  "metric.polling.engine.instances" : 1,
+  "availability.polling.engine.instances" : 1,
+  "discovery.engine.instances" : 1,
+  "poller.engine.instances" : 1,
+  "worker.pool.size" : 5,
+  "eventloop.pool.size" : 7,
+  "server.host": "localhost",
+  "https.port" : 8080
 }

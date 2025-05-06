@@ -6,29 +6,41 @@ import io.vertx.serviceproxy.ServiceBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Verticle responsible for registering the {@link DatabaseService} on the Vert.x Event Bus.
+ * It ensures that the {@link DatabaseClient} is instantiated before proceeding with service registration.
+ */
 public class Database extends AbstractVerticle
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(Database.class);
 
     public static final String DB_SERVICE_ADDRESS = "database-service";
 
+    /**
+     * Starts the verticle by registering the {@link DatabaseService} on the Event Bus using Service Proxy.
+     *
+     * @param startPromise a promise that should be completed when the verticle is fully started
+     */
     @Override
     public void start(Promise<Void> startPromise)
     {
         try
         {
-            if(DatabaseClient.getInstance() !=  null)
+            // Ensure DatabaseClient singleton is initialized before registering the service
+            if (DatabaseClient.getInstance() != null)
             {
+                // Register the service implementation at the defined address
                 new ServiceBinder(vertx)
                         .setAddress(DB_SERVICE_ADDRESS)
                         .register(DatabaseService.class, DatabaseService.create())
-                        .completionHandler(ar ->
+                        .completionHandler(asyncResult ->
                         {
-                            if (ar.failed())
+                            // Handle result of registration
+                            if (asyncResult.failed())
                             {
-                                LOGGER.error("Failed to register DatabaseService: {}", ar.cause().getMessage());
+                                LOGGER.error("Failed to register DatabaseService: {}", asyncResult.cause().getMessage());
 
-                                startPromise.fail(ar.cause());
+                                startPromise.fail(asyncResult.cause());
                             }
                             else
                             {
@@ -52,9 +64,15 @@ public class Database extends AbstractVerticle
         }
     }
 
+    /**
+     * Stops the verticle by closing the shared {@link DatabaseClient} instance.
+     *
+     * @param stopFuture a promise that should be completed when the verticle is fully stopped
+     */
     @Override
     public void stop(Promise<Void> stopFuture)
     {
+        // Close database client and release any resources
         DatabaseClient.close();
 
         stopFuture.complete();

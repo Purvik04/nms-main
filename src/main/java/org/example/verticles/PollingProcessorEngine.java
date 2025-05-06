@@ -12,30 +12,45 @@ import org.example.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * PollingProcessorEngine is responsible for handling batches of device polling data,
+ * executing the Go plugin for metric collection, and storing results in the database.
+ */
 public class PollingProcessorEngine extends AbstractVerticle
 {
-    private static final String QUERY_INSERT_PROVISIONED_DATA = """
-        INSERT INTO provisioned_data (job_id, data, polled_at)
+    // SQL query to insert polled metrics into provisioned_data table
+    private static final String QUERY_INSERT_POLLED_RESULTS = """
+        INSERT INTO polled_results (provision_id, metric, polled_at)
         VALUES ($1, $2, $3)
     """;
 
+    // Proxy to interact with the shared DatabaseService
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PollingProcessorEngine.class);
 
+    /**
+     * Starts the verticle by registering a local event bus consumer to listen for polling tasks.
+     */
     @Override
     public void start(Promise<Void> startPromise) throws Exception
     {
-        vertx.eventBus().localConsumer(Constants.EVENTBUS_POLLING_PROCESSOR_ADDRESS, this::handlePolling);
+        vertx.eventBus().localConsumer(Constants.POLLING_PROCESSOR_ADDRESS, this::handlePolling);
 
         startPromise.complete();
     }
 
+    /**
+     * Handles incoming polling batch messages, runs the Go plugin securely in a worker thread,
+     * and sends results to the database if successful.
+     */
     private void handlePolling(Message<JsonArray> message)
     {
         try
         {
-            vertx.executeBlocking(()-> Utils.runGoPluginSecure(message.body(), Constants.METRICS_MODE), false, asyncResult ->
+            // todo harsh how many threads defined and why
+            vertx.executeBlocking(() ->
+                    Utils.spawnGoPlugin(message.body(), Constants.METRICS), false, asyncResult ->
             {
                 if (asyncResult.succeeded())
                 {
@@ -50,7 +65,32 @@ public class PollingProcessorEngine extends AbstractVerticle
 
                     LOGGER.info("Plugin processed batch, sending {} entries to DB", pluginOutput.size());
 
-                    sendToDatabase(pluginOutput);
+                    try
+                    {
+                        var batchParams = new JsonArray();
+
+                        for (var index = 0; index < pluginOutput.size(); index++)
+                        {
+                            var deviceResult = pluginOutput.getJsonObject(index);
+
+                            batchParams.add(new JsonArray()
+                                    .add(deviceResult.getInteger(Constants.ID))
+                                    .add(deviceResult.getJsonObject(Constants.RESPONSE))
+                                    .add(deviceResult.getString(Constants.POLLED_AT)));
+                        }
+
+                        DATABASE_SERVICE.executeQuery(new JsonObject()
+                                        .put(Constants.QUERY, QUERY_INSERT_POLLED_RESULTS)
+                                        .put(Constants.PARAMS, batchParams))
+                                .onSuccess(result ->
+                                        LOGGER.info("Successfully processed {} entries to DB", pluginOutput.size()))
+                                .onFailure(error ->
+                                        LOGGER.error("Database service failed: {}", error.getMessage()));
+                    }
+                    catch (Exception exception)
+                    {
+                        LOGGER.error("Error in sending to database: {}", exception.getMessage());
+                    }
                 }
                 else
                 {
@@ -64,35 +104,4 @@ public class PollingProcessorEngine extends AbstractVerticle
         }
     }
 
-    private void sendToDatabase(JsonArray polledResults)
-    {
-        try
-        {
-            var batchParams = new JsonArray();
-
-            for (int i = 0; i < polledResults.size(); i++){
-
-                var deviceResult = polledResults.getJsonObject(i);
-
-                batchParams.add(new JsonArray()
-                        .add(deviceResult.getInteger(Constants.ID))
-                        .add(deviceResult.getJsonObject(Constants.DATA))
-                        .add(deviceResult.getString(Constants.POLLED_AT)));
-            }
-
-            var query = new JsonObject()
-                    .put(Constants.QUERY, QUERY_INSERT_PROVISIONED_DATA)
-                    .put(Constants.PARAMS, batchParams);
-
-            DATABASE_SERVICE.executeQuery(query)
-                            .onSuccess(result ->
-                                    LOGGER.info("Successfully processed {} entries to DB", polledResults.size()))
-                            .onFailure(error ->
-                                    LOGGER.error("Database service failed: {}", error.getMessage()));
-        }
-        catch (Exception exception)
-        {
-            LOGGER.error("Error in sending to database: {}", exception.getMessage());
-        }
-    }
 }

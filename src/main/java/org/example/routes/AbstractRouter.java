@@ -3,7 +3,6 @@ package org.example.routes;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
-import org.example.cache.AvailabilityCacheEngine;
 import org.example.service.database.DatabaseService;
 import org.example.service.database.Database;
 import org.example.utils.Constants;
@@ -26,7 +25,7 @@ public abstract class AbstractRouter implements RouterHandler
 
     protected final JsonObject reusableQueryObject = new JsonObject();
 
-    protected void handleCreate(RoutingContext context)
+    void handleCreate(RoutingContext context)
     {
         context.request().bodyHandler(body ->
         {
@@ -38,7 +37,7 @@ public abstract class AbstractRouter implements RouterHandler
 
                 reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
                         .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                        .put(Constants.DATA, body.toJsonObject());
+                        .put(Constants.RESPONSE, body.toJsonObject());
 
                 var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
 
@@ -56,7 +55,7 @@ public abstract class AbstractRouter implements RouterHandler
         });
     }
 
-    protected void handleUpdate(RoutingContext context)
+    void handleUpdate(RoutingContext context)
     {
         context.request().bodyHandler(body ->
         {
@@ -69,7 +68,7 @@ public abstract class AbstractRouter implements RouterHandler
                 reusableQueryObject
                         .put(Constants.OPERATION, Constants.DB_UPDATE)
                         .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                        .put(Constants.DATA, body.toJsonObject())
+                        .put(Constants.RESPONSE, body.toJsonObject())
                         .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(context.pathParam(Constants.ID))));
 
                 var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
@@ -92,7 +91,7 @@ public abstract class AbstractRouter implements RouterHandler
         });
     }
 
-    protected void handleGetById(RoutingContext context)
+    void handleGetById(RoutingContext context)
     {
         try
         {
@@ -125,7 +124,7 @@ public abstract class AbstractRouter implements RouterHandler
 
     }
 
-    protected void handleDelete(RoutingContext context)
+    void handleDelete(RoutingContext context)
     {
         try
         {
@@ -142,15 +141,7 @@ public abstract class AbstractRouter implements RouterHandler
 
             DATABASE_SERVICE
                     .executeQuery(query)
-                    .onSuccess(reply ->
-                    {
-                        if(Utils.getTableNameFromContext(context).equals(Constants.PROVISIONING_JOBS_TABLE_NAME))
-                        {
-                            AvailabilityCacheEngine.removeDevice(Integer.parseInt(context.pathParam(Constants.ID)));
-                        }
-
-                        context.response().setStatusCode(Constants.SC_200).end(reply.encode());
-                    })
+                    .onSuccess(reply -> context.response().setStatusCode(Constants.SC_200).end(reply.encode()))
                     .onFailure(error -> dbServiceFailed(context, error.getMessage()));
         }
         catch (Exception exception)
@@ -161,7 +152,7 @@ public abstract class AbstractRouter implements RouterHandler
         }
     }
 
-    protected void handleGetAll(RoutingContext context)
+    void handleGetAll(RoutingContext context)
     {
         try
         {
@@ -186,7 +177,7 @@ public abstract class AbstractRouter implements RouterHandler
 
     }
 
-    private boolean isInvalidId(String id, RoutingContext context)
+    boolean isInvalidId(String id, RoutingContext context)
     {
         if (id == null || id.isEmpty() || Integer.parseInt(id) < 1)
         {
@@ -198,7 +189,7 @@ public abstract class AbstractRouter implements RouterHandler
         return false;
     }
 
-    protected boolean isInvalidBody(JsonObject body, RoutingContext context)
+    boolean isInvalidBody(JsonObject body, RoutingContext context)
     {
         try
         {

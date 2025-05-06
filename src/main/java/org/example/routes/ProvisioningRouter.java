@@ -4,7 +4,7 @@ package org.example.routes;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import org.example.Main;
+import org.example.BootStrap;
 import org.example.cache.AvailabilityCacheEngine;
 import org.example.utils.Constants;
 import org.example.utils.Utils;
@@ -13,9 +13,13 @@ public class ProvisioningRouter extends AbstractRouter
 {
     private final Router router;
 
+    private static final String MESSAGE_DEVICE_NOT_DISCOVERED = "Device is not discovered yet";
+
+    private static final String MESSAGE_DISCOVERY_PROFILE_NOT_FOUND = "Discovery profile not found";
+
     public ProvisioningRouter()
     {
-        this.router = Router.router(Main.getVertx());
+        this.router = Router.router(BootStrap.getVertx());
 
         initRoutes();
     }
@@ -32,20 +36,18 @@ public class ProvisioningRouter extends AbstractRouter
         router.delete("/:id").handler(this::handleDelete);
     }
 
-    private void handleStartProvision(RoutingContext context)
+    void handleStartProvision(RoutingContext context)
     {
         var id = context.pathParam(Constants.ID);
 
-        if (id == null || id.isEmpty())
+        try
         {
-            context.response().setStatusCode(Constants.SC_400).end(Constants.MESSAGE_ID_INVALID);
-        }
-        else
-        {
+            if(isInvalidId(context.pathParam(Constants.ID),context)) return;
+
             setReusableObjects();
 
             reusableQueryObject.put(Constants.OPERATION, Constants.DB_SELECT)
-                    .put(Constants.TABLE_NAME, Constants.DISCOVERY_PROFILES_TABLE_NAME)
+                    .put(Constants.TABLE_NAME, Constants.DISCOVERY_PROFILES_TABLE)
                     .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(id)));
 
             var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
@@ -63,13 +65,15 @@ public class ProvisioningRouter extends AbstractRouter
                             return;
                         }
 
-                        var data = result.getJsonArray(Constants.DATA);
+                        var data = result.getJsonArray(Constants.RESPONSE);
 
                         if (data == null || data.isEmpty())
                         {
                             context.response()
                                     .setStatusCode(Constants.SC_404)
-                                    .end(new JsonObject().put(Constants.ERROR, "Discovery profile not found").encodePrettily());
+                                    .end(new JsonObject()
+                                            .put(Constants.SUCCESS, Constants.FALSE)
+                                            .put(Constants.ERROR,MESSAGE_DISCOVERY_PROFILE_NOT_FOUND).encodePrettily());
 
                             return;
                         }
@@ -80,7 +84,9 @@ public class ProvisioningRouter extends AbstractRouter
                         {
                             context.response()
                                     .setStatusCode(Constants.SC_404)
-                                    .end(new JsonObject().put(Constants.ERROR, "Device is not discovered yet").encodePrettily());
+                                    .end(new JsonObject()
+                                            .put(Constants.SUCCESS, Constants.FALSE)
+                                            .put(Constants.ERROR, MESSAGE_DEVICE_NOT_DISCOVERED).encodePrettily());
 
                             return;
                         }
@@ -89,7 +95,7 @@ public class ProvisioningRouter extends AbstractRouter
 
                         reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
                                 .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                                .put(Constants.DATA, new JsonObject()
+                                .put(Constants.RESPONSE, new JsonObject()
                                         .put(Constants.IP, discoveryProfile.getString(Constants.IP))
                                         .put(Constants.PORT, discoveryProfile.getInteger(Constants.PORT))
                                         .put(Constants.CREDENTIAL_PROFILE_ID, discoveryProfile.getInteger(Constants.CREDENTIAL_PROFILE_ID)));
@@ -97,55 +103,102 @@ public class ProvisioningRouter extends AbstractRouter
                         DATABASE_SERVICE
                                 .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
                                 .onSuccess(dbReply ->
-                                        {
-                                            AvailabilityCacheEngine.setDeviceStatus(dbReply.getJsonArray(Constants.DATA).getJsonObject(0).getInteger(Constants.ID), Constants.UP);
+                                {
+                                    AvailabilityCacheEngine.setDeviceStatus(dbReply.getJsonArray(Constants.RESPONSE).getJsonObject(0).getInteger(Constants.ID), Constants.UP);
 
-                                            LOGGER.info("after provisionnig {}", AvailabilityCacheEngine.getAllDeviceIds());
+                                    LOGGER.info("after provisionnig {}", AvailabilityCacheEngine.getAllDeviceIds());
 
-                                            context.response().setStatusCode(Constants.SC_201).end(dbReply.encode());
-                                        })
-                                .onFailure(error ->
-                                        context.response()
-                                            .setStatusCode(Constants.SC_500)
-                                            .end(new JsonObject().put(Constants.ERROR, "DBService failed: " + error.getMessage()).encodePrettily())
-                                );
+                                    context.response().setStatusCode(Constants.SC_201).end(dbReply.encode());
+                                })
+                                .onFailure(error -> dbServiceFailed(context, error.getMessage()));
                     })
                     .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error(ERROR_MESSAGE, exception);
+
+            context.response().setStatusCode(Constants.SC_500).end(exception.getMessage());
         }
     }
 
     @Override
-    protected void handleGetById(RoutingContext context)
+    void handleGetById(RoutingContext context)
     {
-        var id = context.pathParam(Constants.ID);
+        try
+        {
+            if(isInvalidId(context.pathParam(Constants.ID),context)) return;
 
-        if (id == null || id.isEmpty())
-        {
-            context.response().setStatusCode(Constants.SC_400).end(Constants.MESSAGE_ID_INVALID);
-        }
-        else
-        {
             setReusableObjects();
 
             reusableQueryObject.put(Constants.OPERATION, Constants.DB_SELECT)
-                .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                    .put(Constants.CONDITIONS , new JsonObject().put(Constants.JOB_ID, Integer.parseInt(id)));
+                    .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                    .put(Constants.CONDITIONS , new JsonObject().put(Constants.PROVISION_ID,
+                            Integer.parseInt(context.pathParam(Constants.ID))));
 
             var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
 
             DATABASE_SERVICE
-                .executeQuery(query)
-                .onSuccess(reply ->
-                    context.response()
-                        .setStatusCode(Constants.SC_200)
-                        .end(reply.toString())
-                )
-                .onFailure(error -> context.response().setStatusCode(Constants.SC_500).end(error.getMessage()));
+                    .executeQuery(query)
+                    .onSuccess(reply -> context.response().setStatusCode(Constants.SC_200).end(reply.toString()))
+                    .onFailure(error -> context.response().setStatusCode(Constants.SC_500).end(error.getMessage()));
+
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error(ERROR_MESSAGE, exception);
+
+            context.response().setStatusCode(Constants.SC_500).end(exception.getMessage());
         }
     }
 
     @Override
-    public Router getRouter() {
+    void handleDelete(RoutingContext context)
+    {
+        try
+        {
+            if (isInvalidId(context.pathParam(Constants.ID), context)) return;
+
+            var id = Integer.parseInt(context.pathParam(Constants.ID));
+
+            setReusableObjects();
+
+            reusableQueryObject
+                    .put(Constants.OPERATION, Constants.DB_UPDATE)
+                    .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                    .put(Constants.CONDITIONS, new JsonObject()
+                            .put(Constants.ID, id)
+                            .put(Constants.STATUS, Constants.FALSE));
+
+            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+
+            DATABASE_SERVICE
+                    .executeQuery(query)
+                    .onSuccess(reply ->
+                    {
+                        try
+                        {
+                            AvailabilityCacheEngine.removeDevice(id);
+
+                            context.response().setStatusCode(Constants.SC_200).end(reply.encode());
+                        }
+                        catch (Exception exception)
+                        {
+                            context.response().setStatusCode(Constants.SC_500).end(exception.getMessage());
+                        }
+                    }).onFailure(error -> dbServiceFailed(context, error.getMessage()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error(ERROR_MESSAGE, exception);
+
+            context.response().setStatusCode(Constants.SC_500).end(exception.getMessage());
+        }
+    }
+
+    @Override
+    public Router getRouter()
+    {
         return router;
     }
 }

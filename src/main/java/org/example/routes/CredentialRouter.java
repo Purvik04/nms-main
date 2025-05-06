@@ -1,7 +1,7 @@
 package org.example.routes;
 
 import io.vertx.ext.web.Router;
-import org.example.Main;
+import org.example.BootStrap;
 
 public class CredentialRouter extends AbstractRouter
 {
@@ -9,7 +9,7 @@ public class CredentialRouter extends AbstractRouter
 
     public CredentialRouter()
     {
-        this.router = Router.router(Main.getVertx());
+        this.router = Router.router(BootStrap.getVertx());
 
         initRoutes();
     }

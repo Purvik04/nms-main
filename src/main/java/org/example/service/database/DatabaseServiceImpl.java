@@ -12,30 +12,43 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 
+/**
+ * Implementation of the {@link DatabaseService} interface.
+ * Handles execution of single and batch SQL queries using a shared PostgreSQL client.
+ */
 public class DatabaseServiceImpl implements DatabaseService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseServiceImpl.class);
 
+    // Singleton database client
     private static final Pool CLIENT = DatabaseClient.getInstance();
 
+    // Used to append RETURNING id to insert/update queries
     private static final String RETURNING_ID = " RETURNING id";
 
+    /**
+     * Executes either a single or batch SQL query based on the query payload.
+     *
+     * @param query a JsonObject containing the SQL string and parameters
+     * @return a Future of JsonObject with query results or error
+     */
     @Override
     public Future<JsonObject> executeQuery(JsonObject query)
     {
         var sql = query.getString(Constants.QUERY);
 
-        var params = query.getJsonArray(Constants.PARAMS , new JsonArray());
+        var params = query.getJsonArray(Constants.PARAMS, new JsonArray());
 
         try
         {
+            // Check if the params are a batch (JsonArray of JsonArrays)
             if (!params.isEmpty() && params.getValue(0) instanceof JsonArray)
             {
-                return executeBatch(sql, params);
+                return executeBatchQuery(sql, params);
             }
             else
             {
-                return executeSingle(sql, params);
+                return executeSingleQuery(sql, params);
             }
         }
         catch (Exception exception)
@@ -46,25 +59,36 @@ public class DatabaseServiceImpl implements DatabaseService
         }
     }
 
-    private Future<JsonObject> executeSingle(String query, JsonArray params)
+    /**
+     * Executes a single SQL query with parameters.
+     *
+     * @param query the SQL string to execute
+     * @param params a JsonArray of parameters to bind to the query
+     * @return a Future containing a JsonObject with results or failure
+     */
+    private Future<JsonObject> executeSingleQuery(String query, JsonArray params)
     {
         var promise = Promise.<JsonObject>promise();
 
         var tuple = Tuple.tuple();
 
-        if ((query.trim().toLowerCase().startsWith(Constants.DB_INSERT) || query.trim().toLowerCase().startsWith(Constants.DB_UPDATE)) && !query.toLowerCase().contains("returning"))
+        // Append RETURNING id to insert/update if not present
+        if ((query.trim().toLowerCase().startsWith(Constants.DB_INSERT) ||
+                query.trim().toLowerCase().startsWith(Constants.DB_UPDATE)) &&
+                !query.toLowerCase().contains("returning"))
         {
             query += RETURNING_ID;
         }
 
         try
         {
-            for (int i = 0; i < params.size(); i++)
+            // Add parameters to the tuple
+            for (var index = 0; index< params.size(); index++)
             {
-                tuple.addValue(params.getValue(i));
+                tuple.addValue(params.getValue(index));
             }
 
-            assert CLIENT != null;
+            // Execute prepared query
             CLIENT.preparedQuery(query).execute(tuple, asyncResult ->
             {
                 if (asyncResult.succeeded())
@@ -73,33 +97,35 @@ public class DatabaseServiceImpl implements DatabaseService
 
                     try
                     {
-                        var jsonRows = new JsonArray();
+                        var reponse = new JsonArray();
 
-                        if(asyncResult.result().size() > 0)
+                        if (asyncResult.result().size() > 0)
                         {
                             asyncResult.result().forEach(row ->
                             {
-                                var obj = new JsonObject();
+                                var responseObject = new JsonObject();
 
-                                for (int i = 0; i < row.size(); i++)
+                                // Convert row to JsonObject
+                                for (var index = 0; index < row.size(); index++)
                                 {
-                                   try
-                                   {
-                                       obj.put(row.getColumnName(i), row.getValue(i));
-                                   }
-                                   catch (Exception exception)
-                                   {
-                                       LOGGER.error(exception.getMessage());
-                                   }
+                                    try
+                                    {
+                                        responseObject.put(row.getColumnName(index), row.getValue(index));
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        LOGGER.error(exception.getMessage());
+                                    }
                                 }
 
-                                jsonRows.add(obj);
+                                reponse.add(responseObject);
                             });
                         }
 
+                        // Complete promise with results
                         promise.complete(new JsonObject()
                                 .put(Constants.SUCCESS, Constants.TRUE)
-                                .put(Constants.DATA, jsonRows));
+                                .put(Constants.RESPONSE, reponse));
                     }
                     catch (Exception exception)
                     {
@@ -126,7 +152,14 @@ public class DatabaseServiceImpl implements DatabaseService
         return promise.future();
     }
 
-    private Future<JsonObject> executeBatch(String query, JsonArray params)
+    /**
+     * Executes a batch SQL query with multiple parameter sets.
+     *
+     * @param query the SQL string to execute
+     * @param params a JsonArray of JsonArrays, each representing one parameter set
+     * @return a Future containing a JsonObject with batch result or failure
+     */
+    private Future<JsonObject> executeBatchQuery(String query, JsonArray params)
     {
         var promise = Promise.<JsonObject>promise();
 
@@ -134,31 +167,24 @@ public class DatabaseServiceImpl implements DatabaseService
         {
             var batchParams = new ArrayList<Tuple>();
 
-            try
+            // Convert each JsonArray to a Tuple
+            for (var index = 0; index < params.size(); index++)
             {
-                for (int i = 0; i < params.size(); i++)
+                var inner = params.getJsonArray(index);
+
+                var tuple = Tuple.tuple();
+
+                for (var innerIndex = 0; innerIndex < inner.size(); innerIndex++)
                 {
-                    var inner = params.getJsonArray(i);
-
-                    var tuple = Tuple.tuple();
-
-                    for (int j = 0; j < inner.size(); j++)
-                    {
-                        tuple.addValue(inner.getValue(j));
-                    }
-                    batchParams.add(tuple);
+                    tuple.addValue(inner.getValue(innerIndex));
                 }
-            }
-            catch (Exception exception)
-            {
-                promise.fail(exception);
 
-                return promise.future();
+                batchParams.add(tuple);
             }
 
             LOGGER.info("Executing Batch Query: {} with {} parameter sets", query, batchParams.size());
 
-            assert CLIENT != null;
+
             CLIENT.preparedQuery(query).executeBatch(batchParams, asyncResult ->
             {
                 if (asyncResult.succeeded())
@@ -166,8 +192,7 @@ public class DatabaseServiceImpl implements DatabaseService
                     LOGGER.info("Batch query executed successfully");
 
                     promise.complete(new JsonObject()
-                            .put(Constants.SUCCESS, Constants.TRUE)
-                            .put(Constants.DATA, "Batch update successful"));
+                            .put(Constants.SUCCESS, Constants.TRUE));
                 }
                 else
                 {

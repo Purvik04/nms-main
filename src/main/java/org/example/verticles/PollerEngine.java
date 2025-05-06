@@ -11,68 +11,89 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * PollerEngine is responsible for deciding *when* each device should be polled for:
+ * 1. Availability (every 2 minutes)
+ * 2. Metrics (every 5 minutes)
+ * It maintains per-device last-poll timestamps to ensure appropriate scheduling.
+ */
 public class PollerEngine extends AbstractVerticle
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PollerEngine.class);
 
-    private static final long METRIC_POLLING_INTERVAL_MILLIS = 5 * 60 * 1000L; //5 minutes
+    // Time interval constants (in milliseconds)
+    private static final long METRIC_POLLING_INTERVAL_MILLIS = 1 * 60 * 1000L; // 5 minutes
+    private static final long AVL_POLLING_INTERVAL_MILLIS = 30 * 1000L; // 2 minutes
+    private static final long SCHEDULER_INTERVAL = 10_000; // 10 seconds between checks
+    private static final long DEFAULT_TIMESTAMP = 0;
 
-    private static final long AVL_POLLING_INTERVAL_MILLIS = 2 * 60 * 1000L; //2 minutes
-
-    private static final long SCHEDULER_INTERVAL = 10_000; // 10 seconds
-
+    // Reusable JsonArrays for each polling type (cleared on each cycle)
     private static final JsonArray AVAILABILITY_POLLING_DEVICE_IDS = new JsonArray();
-
     private static final JsonArray METRIC_POLLING_DEVICE_IDS = new JsonArray();
 
+    // Maps to track the last time each device was polled
     private final Map<Integer, Long> deviceTimerMetricMap = new HashMap<>();
-
     private final Map<Integer, Long> deviceTimerAvailabilityMap = new HashMap<>();
 
+    /**
+     * Starts the polling scheduler loop, which runs every 10 seconds.
+     * It evaluates which devices are due for availability or metric polling.
+     */
     @Override
     public void start(Promise<Void> startPromise)
     {
+        // todo cloise the timer
         vertx.setPeriodic(SCHEDULER_INTERVAL, timerId ->
         {
             try
             {
-                var now = System.currentTimeMillis();
+                var currentTime = System.currentTimeMillis();
 
+                // Clear reusable JSON arrays before building fresh polling sets
                 AVAILABILITY_POLLING_DEVICE_IDS.clear();
 
                 METRIC_POLLING_DEVICE_IDS.clear();
 
+                // Retrieve all registered device IDs from cache
                 var devicesIds = AvailabilityCacheEngine.getAllDeviceIds();
 
                 LOGGER.info("Found {} devices", devicesIds);
 
-                if(!devicesIds.isEmpty())
+                if (!devicesIds.isEmpty())
                 {
                     devicesIds.forEach(deviceId ->
                     {
-                        if(now - deviceTimerMetricMap.getOrDefault(deviceId, 0L) >= METRIC_POLLING_INTERVAL_MILLIS)
+                        // Check if it's time to perform metric polling for this device
+                        if (currentTime - deviceTimerMetricMap.getOrDefault(deviceId, DEFAULT_TIMESTAMP)
+                                >= METRIC_POLLING_INTERVAL_MILLIS)
                         {
-                            deviceTimerMetricMap.put(deviceId, now);
+                            deviceTimerMetricMap.put(deviceId, currentTime);
 
                             METRIC_POLLING_DEVICE_IDS.add(deviceId);
                         }
 
-                        if(now - deviceTimerAvailabilityMap.getOrDefault(deviceId, 0L) >= AVL_POLLING_INTERVAL_MILLIS)
+                        // Check if it's time to perform availability polling for this device
+                        if (currentTime - deviceTimerAvailabilityMap.getOrDefault(deviceId, DEFAULT_TIMESTAMP)
+                                >= AVL_POLLING_INTERVAL_MILLIS)
                         {
-                            deviceTimerAvailabilityMap.put(deviceId, now);
+                            deviceTimerAvailabilityMap.put(deviceId, currentTime);
 
                             AVAILABILITY_POLLING_DEVICE_IDS.add(deviceId);
                         }
                     });
                 }
 
+                // Dispatch polling requests via EventBus if any devices are ready
                 if (!AVAILABILITY_POLLING_DEVICE_IDS.isEmpty())
                 {
-                    vertx.eventBus().send(Constants.EVENTBUS_AVAILABILITY_POLLING_ADDRESS, AVAILABILITY_POLLING_DEVICE_IDS.copy());
+                    vertx.eventBus().send(Constants.AVAILABILITY_POLLING_ADDRESS,
+                            AVAILABILITY_POLLING_DEVICE_IDS.copy());
                 }
-                if(!METRIC_POLLING_DEVICE_IDS.isEmpty())
+
+                if (!METRIC_POLLING_DEVICE_IDS.isEmpty())
                 {
-                    vertx.eventBus().send(Constants.EVENTBUS_METRIC_POLLING_ADDRESS, METRIC_POLLING_DEVICE_IDS.copy());
+                    vertx.eventBus().send(Constants.METRIC_POLLING_ADDRESS,
+                            METRIC_POLLING_DEVICE_IDS.copy());
                 }
             }
             catch (Exception exception)
@@ -84,4 +105,3 @@ public class PollerEngine extends AbstractVerticle
         startPromise.complete();
     }
 }
-

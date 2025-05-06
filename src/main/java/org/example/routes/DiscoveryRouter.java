@@ -2,7 +2,8 @@ package org.example.routes;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.Router;
-import org.example.Main;
+import io.vertx.ext.web.RoutingContext;
+import org.example.BootStrap;
 import org.example.utils.Constants;
 import org.example.utils.Utils;
 
@@ -12,7 +13,7 @@ public class DiscoveryRouter extends AbstractRouter
 
     public DiscoveryRouter()
     {
-        this.router = Router.router(Main.getVertx());
+        this.router = Router.router(BootStrap.getVertx());
 
         initRoutes();
     }
@@ -20,26 +21,41 @@ public class DiscoveryRouter extends AbstractRouter
     @Override
     public void initRoutes()
     {
-        router.post("/createDiscoveryProfile").handler(context ->
-            context.request().bodyHandler(body ->
+        router.post("/createDiscoveryProfile").handler(this::handleCreate);
+
+        router.post("/run").handler(this::handleDiscovery);
+
+        router.get("/getDiscoveryProfiles").handler(this::handleGetAll);
+
+        router.get("/:id").handler(this::handleGetById);
+
+        router.put("/:id").handler(this::handleUpdate);
+
+        router.delete("/:id").handler(this::handleDelete);
+    }
+
+    @Override
+    void handleCreate(RoutingContext context)
+    {
+        context.request().bodyHandler(body ->
+        {
+            try
             {
-                try
-                {
-                    if (isInvalidBody(body.toJsonObject(), context)) return;
+                if (isInvalidBody(body.toJsonObject(), context)) return;
 
-                    setReusableObjects();
+                setReusableObjects();
 
-                    reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
-                            .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                            .put(Constants.DATA, body.toJsonObject());
+                reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
+                        .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
+                        .put(Constants.RESPONSE, body.toJsonObject());
 
-                    var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
+                var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
 
-                    DATABASE_SERVICE
-                            .executeQuery(query)
-                            .onSuccess(reply ->
-                                context.vertx().eventBus().<JsonArray>request(Constants.EVENTBUS_DISCOVERY_ADDRESS,
-                                        new JsonArray().add(reply.getJsonArray(Constants.DATA).getJsonObject(0)
+                DATABASE_SERVICE
+                        .executeQuery(query)
+                        .onSuccess(reply ->
+                                context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS,
+                                        new JsonArray().add(reply.getJsonArray(Constants.RESPONSE).getJsonObject(0)
                                                 .getInteger(Constants.ID)), asyncResult ->
                                         {
                                             if (asyncResult.succeeded())
@@ -53,20 +69,22 @@ public class DiscoveryRouter extends AbstractRouter
                                                 context.response().setStatusCode(Constants.SC_500).end(asyncResult.cause().getMessage());
                                             }
                                         }))
-                            .onFailure(error -> dbServiceFailed(context, error.getMessage()));
-                }
-                catch (Exception exception)
-                {
-                    LOGGER.error(ERROR_MESSAGE, exception);
+                        .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+            }
+            catch (Exception exception)
+            {
+                LOGGER.error(ERROR_MESSAGE, exception);
 
-                    context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
-                }
-            })
-        );
+                context.response().setStatusCode(Constants.SC_400).end(exception.getMessage());
+            }
+        });
+    }
 
-        router.post("/run").handler(context ->
-
-            context.request().bodyHandler(body ->
+    void handleDiscovery(RoutingContext context)
+    {
+        context.request().bodyHandler(body ->
+        {
+            try
             {
                 if (body == null || body.length() == 0)
                 {
@@ -74,7 +92,7 @@ public class DiscoveryRouter extends AbstractRouter
                 }
                 else
                 {
-                    context.vertx().eventBus().<JsonArray>request(Constants.EVENTBUS_DISCOVERY_ADDRESS, body.toJsonObject().getJsonArray("ids"), asyncResult ->
+                    context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS, body.toJsonObject().getJsonArray("ids"), asyncResult ->
                     {
                         if (asyncResult.succeeded())
                         {
@@ -88,20 +106,19 @@ public class DiscoveryRouter extends AbstractRouter
                         }
                     });
                 }
-            })
-        );
+            }
+            catch (Exception exception)
+            {
+                LOGGER.error(ERROR_MESSAGE, exception);
 
-        router.get("/getDiscoveryProfiles").handler(this::handleGetAll);
-
-        router.get("/:id").handler(this::handleGetById);
-
-        router.put("/:id").handler(this::handleUpdate);
-
-        router.delete("/:id").handler(this::handleDelete);
+                context.response().setStatusCode(Constants.SC_500).end(exception.getMessage());
+            }
+        });
     }
 
     @Override
-    public Router getRouter() {
+    public Router getRouter()
+    {
         return router;
     }
 }

@@ -3,14 +3,8 @@ package org.example.utils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 
-public class VerticleConfig
-{
-    public final Class<? extends AbstractVerticle> verticleClass;
-    public final DeploymentOptions options;
-
-    public VerticleConfig(Class<? extends AbstractVerticle> verticleClass, DeploymentOptions options)
-    {
-        this.verticleClass = verticleClass;
-        this.options = options;
-    }
-}
+/**
+ * Class to encapsulate the configuration details for a Verticle deployment.
+ * This class holds the Verticle class type and its deployment options.
+ */
+public record VerticleConfig(Class<? extends AbstractVerticle> verticleClass, DeploymentOptions options) {}

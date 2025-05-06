@@ -37,7 +37,7 @@ public class RequestValidator
     /**
      * Initialize the validator and load schemas from files into the SCHEMA_CACHE
      */
-    public static synchronized void initialize() throws IOException,NullPointerException
+    public static void initialize() throws IOException,NullPointerException
     {
         if(SCHEMA_CACHE.isEmpty())
         {
@@ -47,9 +47,9 @@ public class RequestValidator
                     .setOutputFormat(OutputFormat.Basic);
 
             // Load schemas during initialization
-            loadSchema(Constants.CREDENTIAL_PROFILES_TABLE_NAME, Constants.CREDENTIAL_PROFILES_SCHEMA_PATH);
+            loadSchema(Constants.CREDENTIAL_PROFILES_TABLE, Constants.CREDENTIAL_PROFILES_SCHEMA_PATH);
 
-            loadSchema(Constants.DISCOVERY_PROFILES_TABLE_NAME, Constants.DISCOVERY_PROFILES_SCHEMA_PATH);
+            loadSchema(Constants.DISCOVERY_PROFILES_TABLE, Constants.DISCOVERY_PROFILES_SCHEMA_PATH);
         }
     }
 
