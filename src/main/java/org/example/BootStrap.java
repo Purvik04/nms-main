@@ -10,6 +10,7 @@ import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -156,14 +157,19 @@ public class BootStrap
                         .setInstances(DISCOVERY_ENGINE_INSTANCES))
         );
 
+        var deployedVerticlesIds = new ArrayList<String>(deploymentList.size());
+
         var deploymentSequence = Future.<Void>succeededFuture();
 
         for (var verticle : deploymentList)
         {
             deploymentSequence = deploymentSequence.compose(result -> VERTX.deployVerticle(verticle.verticleClass().getName(), verticle.options())
-                    .onSuccess(id -> LOGGER.info("{} started successfully",
-                            verticle.verticleClass().getSimpleName()))
-                    .mapEmpty());
+                    .onSuccess(id -> {
+                        deployedVerticlesIds.add(id);
+
+                        LOGGER.info("{} started successfully",
+                                verticle.verticleClass().getSimpleName());
+                    }).mapEmpty());
         }
 
         deploymentSequence
@@ -172,6 +178,11 @@ public class BootStrap
                 {
                     LOGGER.error("Deployment failed at {}: {}", err.getStackTrace()[0].getClassName(), err.getMessage());
 
+                    // Undeploy already-deployed verticles
+                    for (String id : deployedVerticlesIds)
+                    {
+                        VERTX.undeploy(id);
+                    }
                     // todo why used close/ arrayList one by one undeploy
                     VERTX.close();
                 });

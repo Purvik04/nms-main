@@ -65,9 +65,9 @@ public class ProvisioningRouter extends AbstractRouter
                             return;
                         }
 
-                        var data = result.getJsonArray(Constants.RESPONSE);
+                        var response = result.getJsonArray(Constants.RESPONSE);
 
-                        if (data == null || data.isEmpty())
+                        if (response == null || response.isEmpty())
                         {
                             context.response()
                                     .setStatusCode(Constants.SC_404)
@@ -78,7 +78,7 @@ public class ProvisioningRouter extends AbstractRouter
                             return;
                         }
 
-                        var discoveryProfile = data.getJsonObject(0);
+                        var discoveryProfile = response.getJsonObject(0);
 
                         if (!Boolean.TRUE.equals(discoveryProfile.getBoolean(Constants.STATUS)))
                         {

@@ -110,7 +110,8 @@ public class DatabaseServiceImpl implements DatabaseService
                                 {
                                     try
                                     {
-                                        responseObject.put(row.getColumnName(index), row.getValue(index));
+                                        responseObject.put(row.getColumnName(index).replace("_","."),
+                                                row.getValue(index));
                                     }
                                     catch (Exception exception)
                                     {

@@ -9,6 +9,7 @@ import org.example.utils.Constants;
 import org.example.utils.MotaDataConfigUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Singleton class responsible for creating and managing the shared PostgreSQL connection pool (`Pool`) using Vert.x.
@@ -50,14 +51,16 @@ public class DatabaseClient
                         .setDatabase(MotaDataConfigUtil.getConfig().getString(DATABASE, Constants.DB_NAME))
                         .setUser(MotaDataConfigUtil.getConfig().getString(USER, Constants.DB_USER))
                         .setPassword(MotaDataConfigUtil.getConfig().getString(PASSWORD))
-                        .setReconnectAttempts(3)        // Retry attempts on failure
-                        .setReconnectInterval(2000L);   // Retry interval in milliseconds
+                        .setReconnectAttempts(2)        // Retry attempts on failure
+                        .setReconnectInterval(2000L)
+                        .setIdleTimeout(10)
+                        .setIdleTimeoutUnit(TimeUnit.SECONDS);   // Retry interval in milliseconds
 
                 // Configure pool options
 
-                //todo harsh why 10
+                //todo harsh why 5
                 var poolOptions = new PoolOptions()
-                        .setMaxSize(10); // Max number of connections in pool
+                        .setMaxSize(5); // Max number of connections in pool
 
                 // Build the pool using Vert.x and provided options
                 instance = PgBuilder.pool()
@@ -65,8 +68,30 @@ public class DatabaseClient
                         .connectingTo(connectOptions)
                         .using(BootStrap.getVertx())
                         .build();
+
+
+                for(var index = 0 ; index < 10; index++)
+                {
+                    instance.getConnection(handler ->{
+                        if(handler.failed())
+                        {
+                            LOGGER.error(handler.cause().getMessage(), handler.cause());
+                        }
+                    });
+                }
+
+//                instance.query(Constants.DB_CONNECTION_CHECK_QUERY).execute(asyncResult ->
+//                {
+//                    if(asyncResult.succeeded())
+//                    {
+//                        LOGGER.info("Connected to database");
+//                    }
+//                    else
+//                    {
+//                        instance = null;
+//                    }
+//                });
             }
-            // todo harsh why instance 10 + check all deployed or not -- na thay to deploy --> undeploy
             catch (Exception exception)
             {
                 // Log and nullify instance on failure
@@ -75,7 +100,6 @@ public class DatabaseClient
                 instance = null;
             }
         }
-
         return instance;
     }
 
@@ -85,7 +109,6 @@ public class DatabaseClient
     public static synchronized void close()
     {
         // Close only if pool is initialized
-        //todo harsh try catch
         if (instance != null)
         {
             try

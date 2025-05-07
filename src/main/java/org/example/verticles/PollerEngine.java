@@ -22,7 +22,7 @@ public class PollerEngine extends AbstractVerticle
     private static final Logger LOGGER = LoggerFactory.getLogger(PollerEngine.class);
 
     // Time interval constants (in milliseconds)
-    private static final long METRIC_POLLING_INTERVAL_MILLIS = 1 * 60 * 1000L; // 5 minutes
+    private static final long METRIC_POLLING_INTERVAL_MILLIS = 30 * 1000L; // 5 minutes
     private static final long AVL_POLLING_INTERVAL_MILLIS = 30 * 1000L; // 2 minutes
     private static final long SCHEDULER_INTERVAL = 10_000; // 10 seconds between checks
     private static final long DEFAULT_TIMESTAMP = 0;
@@ -35,6 +35,9 @@ public class PollerEngine extends AbstractVerticle
     private final Map<Integer, Long> deviceTimerMetricMap = new HashMap<>();
     private final Map<Integer, Long> deviceTimerAvailabilityMap = new HashMap<>();
 
+    // ID of the periodic timer for cancellation
+    private long schedulerTimerId = -1;
+
     /**
      * Starts the polling scheduler loop, which runs every 10 seconds.
      * It evaluates which devices are due for availability or metric polling.
@@ -42,8 +45,7 @@ public class PollerEngine extends AbstractVerticle
     @Override
     public void start(Promise<Void> startPromise)
     {
-        // todo cloise the timer
-        vertx.setPeriodic(SCHEDULER_INTERVAL, timerId ->
+        schedulerTimerId = vertx.setPeriodic(SCHEDULER_INTERVAL, timerId ->
         {
             try
             {
@@ -103,5 +105,26 @@ public class PollerEngine extends AbstractVerticle
         });
 
         startPromise.complete();
+    }
+
+    /**
+     * Cleans up the timer and state when the verticle is undeployed.
+     */
+    @Override
+    public void stop()
+    {
+        if (schedulerTimerId != -1)
+        {
+            vertx.cancelTimer(schedulerTimerId);
+
+            LOGGER.info("Cancelled PollerEngine timer");
+        }
+
+        deviceTimerMetricMap.clear();
+        deviceTimerAvailabilityMap.clear();
+        AVAILABILITY_POLLING_DEVICE_IDS.clear();
+        METRIC_POLLING_DEVICE_IDS.clear();
+
+        LOGGER.info("PollerEngine stopped and resources cleaned up");
     }
 }

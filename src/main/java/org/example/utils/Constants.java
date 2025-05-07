@@ -38,6 +38,8 @@ public class Constants
 
     public static final String  PARAMS = "params";
 
+    public static final String IDS = "ids";
+
     public static final String PLACEHOLDERS = "placeholders";
 
     //DATABASE RESPONSE PREPARE CONSTANTS
@@ -67,19 +69,19 @@ public class Constants
 
 
     //TABLE COLUMNS CONSTANTS
-    public static final String CREDENTIAL_PROFILE_ID = "credential_profile_id";
+    public static final String CREDENTIAL_PROFILE_ID = "credential.profile.id";
 
     public static final String CREDENTIALS = "credentials";
 
     public static final String  ID = "id";
 
-    public static final String  POLLED_AT = "polled_at";
+    public static final String  POLLED_AT = "polled.at";
 
     public static final String IP = "ip";
 
     public static final String PORT = "port";
 
-    public static final String PROVISION_ID = "provision_id";
+    public static final String PROVISION_ID = "provision.id";
 
     //API PATH START CONSTANTS
     public static final String PROVISION_PATH = "provision";

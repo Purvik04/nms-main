@@ -3,6 +3,7 @@ package org.example.verticles;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.example.service.database.DatabaseService;
@@ -40,6 +41,7 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
     // Service proxy for interacting with the database
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
+    private MessageConsumer<JsonArray> localConsumer;
     /**
      * Called when the verticle is deployed.
      * Registers the consumer to handle discovery events on the event bus.
@@ -50,7 +52,7 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
     public void start(Promise<Void> startPromise)
     {
         // Initialize the discovery service by consuming the event bus address
-        vertx.eventBus().localConsumer(Constants.DISCOVERY_ADDRESS, this::handleDiscoveryRequest);
+        localConsumer = vertx.eventBus().localConsumer(Constants.DISCOVERY_ADDRESS, this::handleDiscoveryRequest);
 
         startPromise.complete();
     }
@@ -273,5 +275,23 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
         {
             return errorMessage == null;
         }
+    }
+
+    /**
+     * Stops the verticle, unregistering the event bus consumer and cleaning up.
+     */
+    @Override
+    public void stop(Promise<Void> stopPromise) throws Exception
+    {
+        if (localConsumer != null)
+        {
+            localConsumer.unregister()
+                    .onSuccess(v -> LOGGER.info("DiscoveryEngine event bus consumer unregistered."))
+                    .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
+        }
+
+        LOGGER.info("PollingProcessorEngine stopped.");
+
+        stopPromise.complete();
     }
 }

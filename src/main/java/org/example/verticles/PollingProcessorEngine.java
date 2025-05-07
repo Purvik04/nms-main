@@ -3,6 +3,7 @@ package org.example.verticles;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.example.service.database.Database;
@@ -20,7 +21,7 @@ public class PollingProcessorEngine extends AbstractVerticle
 {
     // SQL query to insert polled metrics into provisioned_data table
     private static final String QUERY_INSERT_POLLED_RESULTS = """
-        INSERT INTO polled_results (provision_id, metric, polled_at)
+        INSERT INTO polled_results (provision_id, metrics, polled_at)
         VALUES ($1, $2, $3)
     """;
 
@@ -29,13 +30,15 @@ public class PollingProcessorEngine extends AbstractVerticle
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PollingProcessorEngine.class);
 
+    // Keep reference to the event bus consumer to unregister it on stop
+    private MessageConsumer<JsonArray> localConsumer;
     /**
      * Starts the verticle by registering a local event bus consumer to listen for polling tasks.
      */
     @Override
     public void start(Promise<Void> startPromise) throws Exception
     {
-        vertx.eventBus().localConsumer(Constants.POLLING_PROCESSOR_ADDRESS, this::handlePolling);
+        localConsumer = vertx.eventBus().localConsumer(Constants.POLLING_PROCESSOR_ADDRESS, this::handlePolling);
 
         startPromise.complete();
     }
@@ -75,7 +78,7 @@ public class PollingProcessorEngine extends AbstractVerticle
 
                             batchParams.add(new JsonArray()
                                     .add(deviceResult.getInteger(Constants.ID))
-                                    .add(deviceResult.getJsonObject(Constants.RESPONSE))
+                                    .add(deviceResult.getJsonObject(Constants.METRICS))
                                     .add(deviceResult.getString(Constants.POLLED_AT)));
                         }
 
@@ -102,6 +105,24 @@ public class PollingProcessorEngine extends AbstractVerticle
         {
             LOGGER.error("Error in Polling Processing: {}", exception.getMessage());
         }
+    }
+
+    /**
+     * Stops the verticle, unregistering the event bus consumer and cleaning up.
+     */
+    @Override
+    public void stop(Promise<Void> stopPromise) throws Exception
+    {
+        if (localConsumer != null)
+        {
+            localConsumer.unregister()
+                    .onSuccess(v -> LOGGER.info("PollingProcessorEngine event bus consumer unregistered."))
+                    .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
+        }
+
+        LOGGER.info("PollingProcessorEngine stopped.");
+
+        stopPromise.complete();
     }
 
 }

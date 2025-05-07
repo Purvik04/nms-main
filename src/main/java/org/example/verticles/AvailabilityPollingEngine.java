@@ -3,6 +3,7 @@ package org.example.verticles;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.example.cache.AvailabilityCacheEngine;
@@ -26,9 +27,11 @@ public class AvailabilityPollingEngine extends AbstractVerticle
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
     // SQL query to fetch all devices from the provisioning_jobs table
-    private static final String FETCH_ALL_DEVICES_ID_QUERY = "SELECT id FROM provision;";
+    private static final String FETCH_ALL_DEVICES_ID_QUERY = "SELECT id FROM provision WHERE status = true;";
 
     private static final String FETCH_DEVICE_IP_QUERY = "SELECT ip, id from provision WHERE id IN ($1)";
+
+    private MessageConsumer<JsonArray> localConsumer;
     /**
      * Start method for the verticle. Initializes the polling engine by fetching device data from the database
      * and setting the initial status for each device.
@@ -80,7 +83,7 @@ public class AvailabilityPollingEngine extends AbstractVerticle
                 });
 
         // Set up an event bus consumer to handle availability polling requests
-        vertx.eventBus().localConsumer(Constants.AVAILABILITY_POLLING_ADDRESS,this::handleAvailabilityPolling);
+        localConsumer = vertx.eventBus().localConsumer(Constants.AVAILABILITY_POLLING_ADDRESS,this::handleAvailabilityPolling);
     }
 
     /**
@@ -156,5 +159,23 @@ public class AvailabilityPollingEngine extends AbstractVerticle
             // Log any exceptions that occur during the availability polling process
             LOGGER.error("Error in availability polling: {}", exception.getMessage());
         }
+    }
+
+    /**
+     * Stops the verticle, unregistering the event bus consumer and cleaning up.
+     */
+    @Override
+    public void stop(Promise<Void> stopPromise) throws Exception
+    {
+        if (localConsumer != null)
+        {
+            localConsumer.unregister()
+                    .onSuccess(v -> LOGGER.info("AvailabilityPollingEngine event bus consumer unregistered."))
+                    .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
+        }
+
+        LOGGER.info("PollingProcessorEngine stopped.");
+
+        stopPromise.complete();
     }
 }

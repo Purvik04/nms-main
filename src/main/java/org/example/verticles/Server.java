@@ -55,7 +55,7 @@ public class Server extends AbstractVerticle
                             .setPassword(MotaDataConfigUtil.getConfig()
                                     .getString(SSL_KEYSTORE_PASSWORD, Constants.SSL_KEYSTORE_PASSWORD))))
                     .requestHandler(mainRouter)
-                    .exceptionHandler(startPromise::fail)
+                    .exceptionHandler(error -> LOGGER.error("Error in main router: {}", error.getMessage()))
                     .listen(MotaDataConfigUtil.getConfig()
                             .getInteger(HTTPS_PORT, Constants.HTTPS_PORT), asyncResult ->
                     {
@@ -68,9 +68,6 @@ public class Server extends AbstractVerticle
                             startPromise.fail(asyncResult.cause());
                         }
                     });
-
-            //todo harsh use exception handler
-
         }
         catch (Exception exception)
         {

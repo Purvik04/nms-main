@@ -113,7 +113,7 @@ public class Utils
 
             try (var reader = new BufferedReader(new InputStreamReader(process.getErrorStream())))
             {
-                String line;
+                var line = "";
 
                 while ((line = reader.readLine()) != null)
                 {
@@ -235,7 +235,7 @@ public class Utils
                 }
             }
 
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            var finished = process.waitFor(5, TimeUnit.SECONDS);
 
             if (!finished)
             {
@@ -318,7 +318,8 @@ public class Utils
             {
                 case Constants.DB_INSERT:
                     // INSERT INTO table (col1, col2) VALUES ($1, $2)
-                    var keys = data.fieldNames();
+                    var keys = data.fieldNames().stream()
+                            .map(column -> column.replace("_",".")).toList();
 
                     var columnsStr = String.join(", ", keys);
 

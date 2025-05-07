@@ -3,6 +3,7 @@ package org.example.verticles;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.example.cache.AvailabilityCacheEngine;
@@ -26,15 +27,17 @@ public class MetricPollingVerticle extends AbstractVerticle
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
     private static final String FETCH_DEVICES_DATA_QUERY = "SELECT provision.id AS id, provision.ip, provision.port, cp.credentials, cp.system_type " +
-            "FROM provision JOIN credential_profiles cp ON p.credential_profile_id = cp.id WHERE p.id IN ($1) ORDER BY p.id";
+            "FROM provision JOIN credential_profiles cp ON provision.credential_profile_id = cp.id WHERE provision.id IN ($1) ORDER BY provision.id";
 
+    // Keep reference to the event bus consumer to unregister it on stop
+    private MessageConsumer<JsonArray> localConsumer;
     /**
      * Registers a local EventBus consumer for metric polling events.
      */
     @Override
     public void start(Promise<Void> startPromise)
     {
-        vertx.eventBus().localConsumer(Constants.METRIC_POLLING_ADDRESS, this::handleMetricPolling);
+        localConsumer = vertx.eventBus().localConsumer(Constants.METRIC_POLLING_ADDRESS, this::handleMetricPolling);
 
         startPromise.complete();
     }
@@ -119,5 +122,23 @@ public class MetricPollingVerticle extends AbstractVerticle
 
         }
         return filteredIds;
+    }
+
+    /**
+     * Stops the verticle, unregistering the event bus consumer and cleaning up.
+     */
+    @Override
+    public void stop(Promise<Void> stopPromise) throws Exception
+    {
+        if (localConsumer != null)
+        {
+            localConsumer.unregister()
+                    .onSuccess(v -> LOGGER.info("MetricPollingEngine event bus consumer unregistered."))
+                    .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
+        }
+
+        LOGGER.info("PollingProcessorEngine stopped.");
+
+        stopPromise.complete();
     }
 }

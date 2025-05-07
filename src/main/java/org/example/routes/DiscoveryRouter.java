@@ -92,7 +92,7 @@ public class DiscoveryRouter extends AbstractRouter
                 }
                 else
                 {
-                    context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS, body.toJsonObject().getJsonArray("ids"), asyncResult ->
+                    context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS, body.toJsonObject().getJsonArray(Constants.IDS), asyncResult ->
                     {
                         if (asyncResult.succeeded())
                         {
