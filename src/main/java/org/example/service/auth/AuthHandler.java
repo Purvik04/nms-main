@@ -25,7 +25,7 @@ public class AuthHandler
     // Config key constants
     private static final String JWT_SECRET_KEY = "jwt.secret.key";
     private static final String JWT_ENCRYPTION_ALGORITHM = "jwt.encryption.algorithm";
-    private static final String JWT_EXPIRY_TIME_IN_SECONDS = "jwtExpiryTimeInSeconds";
+    private static final String JWT_EXPIRY_TIME_IN_SECONDS = "jwt.expiry.time.in.seconds";
 
     // Refresh token expiry duration (7 days)
     private static final int JWT_EXPIRY_REFRESH_TIME_IN_SECONDS = 604800;

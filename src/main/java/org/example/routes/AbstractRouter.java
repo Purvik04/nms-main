@@ -37,7 +37,7 @@ public abstract class AbstractRouter implements RouterHandler
 
                 reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
                         .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                        .put(Constants.RESPONSE, body.toJsonObject());
+                        .put(Constants.DATA, body.toJsonObject());
 
                 var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
 
@@ -45,6 +45,7 @@ public abstract class AbstractRouter implements RouterHandler
                         .executeQuery(query)
                         .onSuccess(reply -> context.response().setStatusCode(Constants.SC_201).end(reply.encode()))
                         .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+
             }
             catch (Exception exception)
             {
@@ -68,7 +69,7 @@ public abstract class AbstractRouter implements RouterHandler
                 reusableQueryObject
                         .put(Constants.OPERATION, Constants.DB_UPDATE)
                         .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                        .put(Constants.RESPONSE, body.toJsonObject())
+                        .put(Constants.DATA, body.toJsonObject())
                         .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(context.pathParam(Constants.ID))));
 
                 var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
@@ -204,7 +205,8 @@ public abstract class AbstractRouter implements RouterHandler
 
             if(!errorMessage.isEmpty())
             {
-                context.response().setStatusCode(Constants.SC_400).end(errorMessage);
+                context.response().setStatusCode(Constants.SC_400).end(new JsonObject()
+                        .put(Constants.SUCCESS,Constants.FALSE).put(Constants.ERROR,errorMessage).encode());
 
                 return true;
             }

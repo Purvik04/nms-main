@@ -22,9 +22,9 @@ public class PollerEngine extends AbstractVerticle
     private static final Logger LOGGER = LoggerFactory.getLogger(PollerEngine.class);
 
     // Time interval constants (in milliseconds)
-    private static final long METRIC_POLLING_INTERVAL_MILLIS = 30 * 1000L; // 5 minutes
-    private static final long AVL_POLLING_INTERVAL_MILLIS = 30 * 1000L; // 2 minutes
-    private static final long SCHEDULER_INTERVAL = 10_000; // 10 seconds between checks
+    private static final long METRIC_POLLING_INTERVAL_MILLIS = 5 * 60 * 1000L; // 5 minutes
+    private static final long AVL_POLLING_INTERVAL_MILLIS = 2 * 60 * 1000L; // 2 minutes
+    private static final long SCHEDULER_INTERVAL = 10_000; // 10 seconds
     private static final long DEFAULT_TIMESTAMP = 0;
 
     // Reusable JsonArrays for each polling type (cleared on each cycle)
@@ -58,8 +58,6 @@ public class PollerEngine extends AbstractVerticle
 
                 // Retrieve all registered device IDs from cache
                 var devicesIds = AvailabilityCacheEngine.getAllDeviceIds();
-
-                LOGGER.info("Found {} devices", devicesIds);
 
                 if (!devicesIds.isEmpty())
                 {
@@ -104,7 +102,7 @@ public class PollerEngine extends AbstractVerticle
             }
         });
 
-        startPromise.complete();
+        startPromise.fail("Poller engine failed.");
     }
 
     /**
@@ -124,7 +122,5 @@ public class PollerEngine extends AbstractVerticle
         deviceTimerAvailabilityMap.clear();
         AVAILABILITY_POLLING_DEVICE_IDS.clear();
         METRIC_POLLING_DEVICE_IDS.clear();
-
-        LOGGER.info("PollerEngine stopped and resources cleaned up");
     }
 }

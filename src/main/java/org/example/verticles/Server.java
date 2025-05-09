@@ -55,7 +55,6 @@ public class Server extends AbstractVerticle
                             .setPassword(MotaDataConfigUtil.getConfig()
                                     .getString(SSL_KEYSTORE_PASSWORD, Constants.SSL_KEYSTORE_PASSWORD))))
                     .requestHandler(mainRouter)
-                    .exceptionHandler(error -> LOGGER.error("Error in main router: {}", error.getMessage()))
                     .listen(MotaDataConfigUtil.getConfig()
                             .getInteger(HTTPS_PORT, Constants.HTTPS_PORT), asyncResult ->
                     {
@@ -113,5 +112,11 @@ public class Server extends AbstractVerticle
 
             startPromise.fail(exception);
         }
+    }
+
+    @Override
+    public void stop()
+    {
+        LOGGER.info("Server verticle undeployed successfully");
     }
 }

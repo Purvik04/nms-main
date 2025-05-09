@@ -52,8 +52,6 @@ public class MetricPollingVerticle extends AbstractVerticle
         {
             var deviceIds = message.body();
 
-            LOGGER.info("Received device ids: {}", deviceIds);
-
             // Step 1: Filter out devices not marked UP in cache
             var filteredDeviceIds = filterDevicesForPolling(deviceIds);
 
@@ -65,7 +63,6 @@ public class MetricPollingVerticle extends AbstractVerticle
             }
 
             // Step 2: Query the database asynchronously
-            // todo do not add here create db
             DATABASE_SERVICE.executeQuery(new JsonObject()
                             .put(Constants.QUERY, Utils.buildJoinQuery(FETCH_DEVICES_DATA_QUERY,filteredDeviceIds.size()))
                             .put(Constants.PARAMS, filteredDeviceIds))
@@ -73,14 +70,10 @@ public class MetricPollingVerticle extends AbstractVerticle
                     {
                         if (Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
                         {
-                            var devicesData = result.getJsonArray(Constants.RESPONSE);
+                            var devicesData = result.getJsonArray(Constants.DATA);
 
                             if (!devicesData.isEmpty())
                             {
-                                LOGGER.info("Sending batch of size {} to PollingProcessor", devicesData.size());
-
-                                LOGGER.info(devicesData.toString());
-
                                 // Step 4: Send data to PollingProcessor via EventBus
                                 vertx.eventBus().send(Constants.POLLING_PROCESSOR_ADDRESS, devicesData);
                             }
@@ -136,9 +129,6 @@ public class MetricPollingVerticle extends AbstractVerticle
                     .onSuccess(v -> LOGGER.info("MetricPollingEngine event bus consumer unregistered."))
                     .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
         }
-
-        LOGGER.info("PollingProcessorEngine stopped.");
-
         stopPromise.complete();
     }
 }

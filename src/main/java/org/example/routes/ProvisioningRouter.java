@@ -17,6 +17,8 @@ public class ProvisioningRouter extends AbstractRouter
 
     private static final String MESSAGE_DISCOVERY_PROFILE_NOT_FOUND = "Discovery profile not found";
 
+    private static final String MESSAGE_DEVICE_IS_ALREADY_PROVISIONING = "Device is already provisioning";
+
     public ProvisioningRouter()
     {
         this.router = Router.router(BootStrap.getVertx());
@@ -36,6 +38,7 @@ public class ProvisioningRouter extends AbstractRouter
         router.delete("/:id").handler(this::handleDelete);
     }
 
+    //todo:- simplify logic of provision
     void handleStartProvision(RoutingContext context)
     {
         var id = context.pathParam(Constants.ID);
@@ -50,10 +53,8 @@ public class ProvisioningRouter extends AbstractRouter
                     .put(Constants.TABLE_NAME, Constants.DISCOVERY_PROFILES_TABLE)
                     .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID, Integer.parseInt(id)));
 
-            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
-
             DATABASE_SERVICE
-                    .executeQuery(query)
+                    .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
                     .onSuccess(result ->
                     {
                         if (!Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
@@ -65,7 +66,7 @@ public class ProvisioningRouter extends AbstractRouter
                             return;
                         }
 
-                        var response = result.getJsonArray(Constants.RESPONSE);
+                        var response = result.getJsonArray(Constants.DATA);
 
                         if (response == null || response.isEmpty())
                         {
@@ -93,24 +94,70 @@ public class ProvisioningRouter extends AbstractRouter
 
                         setReusableObjects();
 
-                        reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
-                                .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                                .put(Constants.RESPONSE, new JsonObject()
+                        reusableQueryObject.put(Constants.OPERATION, Constants.DB_SELECT)
+                                .put(Constants.TABLE_NAME, Constants.PROVISION_TABLE)
+                                .put(Constants.CONDITIONS , new JsonObject()
                                         .put(Constants.IP, discoveryProfile.getString(Constants.IP))
-                                        .put(Constants.PORT, discoveryProfile.getInteger(Constants.PORT))
-                                        .put(Constants.CREDENTIAL_PROFILE_ID, discoveryProfile.getInteger(Constants.CREDENTIAL_PROFILE_ID)));
+                                        .put(Constants.CREDENTIAL_PROFILE_ID
+                                                ,discoveryProfile.getInteger(Constants.CREDENTIAL_PROFILE_ID)));
 
-                        DATABASE_SERVICE
-                                .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
-                                .onSuccess(dbReply ->
+                        DATABASE_SERVICE.executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
+                                .onSuccess(asyncResult ->
                                 {
-                                    AvailabilityCacheEngine.setDeviceStatus(dbReply.getJsonArray(Constants.RESPONSE).getJsonObject(0).getInteger(Constants.ID), Constants.UP);
+                                    var databaseResponse = asyncResult.getJsonArray(Constants.DATA);
 
-                                    LOGGER.info("after provisionnig {}", AvailabilityCacheEngine.getAllDeviceIds());
+                                    setReusableObjects();
 
-                                    context.response().setStatusCode(Constants.SC_201).end(dbReply.encode());
-                                })
-                                .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+                                    if(databaseResponse.isEmpty())
+                                    {
+                                        reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
+                                                .put(Constants.TABLE_NAME, Constants.PROVISION_TABLE)
+                                                .put(Constants.DATA, new JsonObject()
+                                                        .put(Constants.IP, discoveryProfile.getString(Constants.IP))
+                                                        .put(Constants.PORT, discoveryProfile.getInteger(Constants.PORT))
+                                                        .put(Constants.CREDENTIAL_PROFILE_ID, discoveryProfile.getInteger(Constants.CREDENTIAL_PROFILE_ID)));
+
+                                        DATABASE_SERVICE
+                                                .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
+                                                .onSuccess(dbReply ->
+                                                {
+                                                    AvailabilityCacheEngine.setDeviceStatus(dbReply.getJsonArray(Constants.DATA).getJsonObject(0).getInteger(Constants.ID), Constants.UP);
+
+                                                    context.response().setStatusCode(Constants.SC_201).end(dbReply.encode());
+                                                })
+                                                .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+                                    }
+                                    else if(!Boolean.TRUE.equals(databaseResponse.getJsonObject(0).getBoolean(Constants.STATUS)))
+                                    {
+                                        reusableQueryObject.put(Constants.OPERATION, Constants.DB_UPDATE)
+                                                .put(Constants.CONDITIONS ,new JsonObject().put(Constants.ID,databaseResponse.getJsonObject(0).getInteger(Constants.ID)))
+                                                .put(Constants.TABLE_NAME,Constants.PROVISION_TABLE)
+                                                .put(Constants.DATA, new JsonObject().put(Constants.STATUS,Constants.TRUE));
+
+                                        DATABASE_SERVICE
+                                                .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
+                                                .onSuccess(dbReply ->
+                                                {
+                                                    AvailabilityCacheEngine.setDeviceStatus(databaseResponse.getJsonObject(0).getInteger(Constants.ID), Constants.UP);
+
+                                                    context.response().setStatusCode(Constants.SC_201)
+                                                            .end(new JsonObject()
+                                                                    .put(Constants.SUCCESS, Constants.TRUE)
+                                                                    .put(Constants.ID,databaseResponse.getJsonObject(0).getInteger(Constants.ID)).encode());
+
+                                                })
+                                                .onFailure(error -> dbServiceFailed(context, error.getMessage()));
+                                    }
+                                    else
+                                    {
+                                        context.response().setStatusCode(Constants.SC_400)
+                                                .end(new JsonObject().put(Constants.SUCCESS, Constants.FALSE)
+                                                        .put(Constants.ERROR,MESSAGE_DEVICE_IS_ALREADY_PROVISIONING)
+                                                        .encodePrettily());
+                                    }
+                                });
+
+
                     })
                     .onFailure(error -> dbServiceFailed(context, error.getMessage()));
         }
@@ -136,10 +183,8 @@ public class ProvisioningRouter extends AbstractRouter
                     .put(Constants.CONDITIONS , new JsonObject().put(Constants.PROVISION_ID,
                             Integer.parseInt(context.pathParam(Constants.ID))));
 
-            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
-
             DATABASE_SERVICE
-                    .executeQuery(query)
+                    .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
                     .onSuccess(reply -> context.response().setStatusCode(Constants.SC_200).end(reply.toString()))
                     .onFailure(error -> context.response().setStatusCode(Constants.SC_500).end(error.getMessage()));
 
@@ -165,16 +210,12 @@ public class ProvisioningRouter extends AbstractRouter
 
             reusableQueryObject
                     .put(Constants.OPERATION, Constants.DB_UPDATE)
+                    .put(Constants.CONDITIONS , new JsonObject().put(Constants.ID,id))
                     .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                    .put(Constants.CONDITIONS, new JsonObject()
-                            .put(Constants.ID, id)
+                    .put(Constants.DATA, new JsonObject()
                             .put(Constants.STATUS, Constants.FALSE));
 
-            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
-
-            DATABASE_SERVICE
-                    .executeQuery(query)
-                    .onSuccess(reply ->
+            DATABASE_SERVICE.executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams)).onSuccess(reply ->
                     {
                         try
                         {

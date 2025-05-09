@@ -20,15 +20,15 @@ public class Constants
     //QUERY BUILDER CONSTANTS
     public static final String OPERATION = "operation";
 
-    public static final String DB_INSERT = "insert";
+    public static final String DB_INSERT = "INSERT";
 
-    public static final String DB_SELECT = "select";
+    public static final String DB_SELECT = "SELECT";
 
-    public static final String DB_UPDATE = "update";
+    public static final String DB_UPDATE = "UPDATE";
 
-    public static final String DB_DELETE = "delete";
+    public static final String DB_DELETE = "DELETE";
 
-    public static final String TABLE_NAME = "tableName";
+    public static final String TABLE_NAME = "table.name";
 
     public static final String CONDITIONS = "conditions";
 
@@ -42,8 +42,8 @@ public class Constants
 
     public static final String PLACEHOLDERS = "placeholders";
 
-    //DATABASE RESPONSE PREPARE CONSTANTS
-    public static final String RESPONSE = "response";
+    //DATABASE DATA PREPARE CONSTANTS
+    public static final String DATA = "data";
 
     public static final String SUCCESS = "success";
 
@@ -60,7 +60,7 @@ public class Constants
     public static final String DISCOVERY_ADDRESS = "discovery.engine";
 
 
-    //SERVER RESPONSE CONSTANTS
+    //SERVER DATA CONSTANTS
     public static final String MESSAGE_BODY_REQUIRED = "Body is empty";
 
     public static final String MESSAGE_ID_INVALID = "Id is invalid";
@@ -69,19 +69,19 @@ public class Constants
 
 
     //TABLE COLUMNS CONSTANTS
-    public static final String CREDENTIAL_PROFILE_ID = "credential.profile.id";
+    public static final String CREDENTIAL_PROFILE_ID = "credential_profile_id";
 
     public static final String CREDENTIALS = "credentials";
 
     public static final String  ID = "id";
 
-    public static final String  POLLED_AT = "polled.at";
+    public static final String  POLLED_AT = "polled_at";
 
     public static final String IP = "ip";
 
     public static final String PORT = "port";
 
-    public static final String PROVISION_ID = "provision.id";
+    public static final String PROVISION_ID = "provision_id";
 
     //API PATH START CONSTANTS
     public static final String PROVISION_PATH = "provision";
@@ -158,11 +158,27 @@ public class Constants
 
     public static final String EMPTY_STRING = "";
 
-    public static final String PACKET_SEND = "packet.send";
+    public static final String PACKETS_SEND = "packets_send";
 
-    public static final String PACKET_RECEIVE = "packet.receive";
+    public static final String PACKETS_RECEIVED = "packets_received";
 
-    public static final String PACKET_LOSS_PERCENTAGE= "packet.loss.percentage";
+    public static final String PACKET_LOSS_PERCENTAGE= "packet_loss_percentage";
+
+    public static final String PING_PROCESS_TIMEOUT = "ping.process.timeout";
+
+    public static final String PING_PACKET_COUNT = "ping.packet.count";
+
+    public static final String PING_PACKET_TIMEOUT_IN_MILLISECONDS = "ping.packet.timeout.in.milliseconds";
+
+    public static final String PLUGIN_PROCESS_TIMEOUT = "plugin.process.timeout";
+
+    public static final int DEFAULT_PING_PROCESS_TIMEOUT = 1;
+
+    public static final int DEFAULT_PLUGIN_PROCESS_TIMEOUT = 5;
+
+    public static final int DEFAULT_PING_PACKET_COUNT = 3;
+
+    public static final int DEFAULT_PING_PACKET_TIMEOUT_IN_MILLISECONDS = 500;
 
 
     //SCHEMA PATHS

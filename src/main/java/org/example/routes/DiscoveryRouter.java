@@ -47,7 +47,7 @@ public class DiscoveryRouter extends AbstractRouter
 
                 reusableQueryObject.put(Constants.OPERATION, Constants.DB_INSERT)
                         .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
-                        .put(Constants.RESPONSE, body.toJsonObject());
+                        .put(Constants.DATA, body.toJsonObject());
 
                 var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
 
@@ -55,7 +55,7 @@ public class DiscoveryRouter extends AbstractRouter
                         .executeQuery(query)
                         .onSuccess(reply ->
                                 context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS,
-                                        new JsonArray().add(reply.getJsonArray(Constants.RESPONSE).getJsonObject(0)
+                                        new JsonArray().add(reply.getJsonArray(Constants.DATA).getJsonObject(0)
                                                 .getInteger(Constants.ID)), asyncResult ->
                                         {
                                             if (asyncResult.succeeded())

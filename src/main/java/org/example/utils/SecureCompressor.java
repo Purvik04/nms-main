@@ -80,6 +80,8 @@ public class SecureCompressor
         try (var out = new FileOutputStream(filePath))
         {
             out.write(Base64.getEncoder().encodeToString(fullBytes).getBytes());
+
+            out.flush();
         }
     }
 

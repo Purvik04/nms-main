@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
  * Verticle responsible for registering the {@link DatabaseService} on the Vert.x Event Bus.
  * It ensures that the {@link DatabaseClient} is instantiated before proceeding with service registration.
  */
+
+//todo:- implement databse execute query logic here
 public class Database extends AbstractVerticle
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(Database.class);
@@ -74,6 +76,8 @@ public class Database extends AbstractVerticle
     {
         // Close database client and release any resources
         DatabaseClient.close();
+
+        LOGGER.info("Database verticle undeployed successfully");
 
         stopFuture.complete();
     }

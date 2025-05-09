@@ -13,6 +13,9 @@ import org.example.utils.Constants;
 import org.example.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Verticle for polling device availability. It fetches device information from the database,
@@ -20,16 +23,19 @@ import org.slf4j.LoggerFactory;
  */
 public class AvailabilityPollingEngine extends AbstractVerticle
 {
-    // Logger for logging messages
     private static final Logger LOGGER = LoggerFactory.getLogger(AvailabilityPollingEngine.class);
 
-    // Database service to interact with the database
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
-    // SQL query to fetch all devices from the provisioning_jobs table
+    // SQL queries
     private static final String FETCH_ALL_DEVICES_ID_QUERY = "SELECT id FROM provision WHERE status = true;";
 
     private static final String FETCH_DEVICE_IP_QUERY = "SELECT ip, id from provision WHERE id IN ($1)";
+
+    private static final String INSERT_PING_RESULTS_QUERY = """
+            INSERT INTO availability_polling_results (provision_id, packets_send, packets_received, packet_loss_percentage,timestamp)
+            VALUES ($1, $2, $3, $4,$5)
+            """;
 
     private MessageConsumer<JsonArray> localConsumer;
     /**
@@ -48,7 +54,7 @@ public class AvailabilityPollingEngine extends AbstractVerticle
                     // If the query was successful, fetch the devices data
                     if(Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
                     {
-                        var deviceData = result.getJsonArray(Constants.RESPONSE);
+                        var deviceData = result.getJsonArray(Constants.DATA);
 
                         // If devices are found, initialize their status to "DOWN"
                         if (!deviceData.isEmpty())
@@ -101,7 +107,6 @@ public class AvailabilityPollingEngine extends AbstractVerticle
             var deviceIds = message.body();
 
             // Execute the query to fetch device information
-            // todo change flow for db
             DATABASE_SERVICE.executeQuery(new JsonObject()
                     .put(Constants.QUERY, Utils.buildJoinQuery(FETCH_DEVICE_IP_QUERY, deviceIds.size()))
                     .put(Constants.PARAMS, deviceIds)).onSuccess(result ->
@@ -109,19 +114,18 @@ public class AvailabilityPollingEngine extends AbstractVerticle
                         // If the query was successful
                         if(Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
                         {
-                            var devicesData = result.getJsonArray(Constants.RESPONSE);
+                            var devicesData = result.getJsonArray(Constants.DATA);
+
+                            var timeStamp = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z";
 
                             // If devices are found, execute the fping utility for availability check
                             if (!devicesData.isEmpty())
                             {
-                                // todo harsh ho many pools defined why explain why with numbers
                                 vertx.executeBlocking(() -> Utils.ping(devicesData), false, asyncResult ->
                                 {
                                     // Handle the result of the fping utility
                                     if (asyncResult.succeeded())
                                     {
-                                        LOGGER.info("fping results: {}", asyncResult.result());
-
                                         var pingOutput = asyncResult.result();
 
                                         // If fping result is not empty, update the device status in the cache
@@ -140,9 +144,11 @@ public class AvailabilityPollingEngine extends AbstractVerticle
                                                 catch (Exception exception)
                                                 {
                                                     // Log any exception during status update
-                                                    LOGGER.error("Error in setting device status: {}", exception.getMessage());
+                                                    LOGGER.error("Error in set up device status: {}", exception.getMessage());
                                                 }
                                             }
+
+                                            updatePingResultsInDb(pingOutput, timeStamp);
                                         }
                                         else
                                         {
@@ -152,7 +158,8 @@ public class AvailabilityPollingEngine extends AbstractVerticle
                                 });
                             }
                         }
-                    }).onFailure(error -> LOGGER.error("Error in fetching devices for availability polling: {}", error.getMessage()));
+                    }).onFailure(error -> LOGGER.error("Error in fetching devices for availability polling: {}"
+                    , error.getMessage()));
         }
         catch (Exception exception)
         {
@@ -161,21 +168,52 @@ public class AvailabilityPollingEngine extends AbstractVerticle
         }
     }
 
+    private static void updatePingResultsInDb(JsonArray pingOutput, String timeStamp)
+    {
+        try
+        {
+            var batchParams = new JsonArray();
+
+            for (var index = 0; index < pingOutput.size(); index++)
+            {
+                var pingResult = pingOutput.getJsonObject(index);
+
+                // Create array for each row
+                var paramArray = new JsonArray()
+                        .add(pingResult.getInteger(Constants.ID))
+                        .add(pingResult.getInteger(Constants.PACKETS_SEND))
+                        .add(pingResult.getInteger(Constants.PACKETS_RECEIVED))
+                        .add(pingResult.getInteger(Constants.PACKET_LOSS_PERCENTAGE))
+                        .add(timeStamp);
+
+                batchParams.add(paramArray);
+            }
+
+            DATABASE_SERVICE.executeQuery(new JsonObject().put(Constants.QUERY, INSERT_PING_RESULTS_QUERY)
+                            .put(Constants.PARAMS, batchParams)).onFailure(error ->
+                                    LOGGER.error("Error in inserting ping results: {}", error.getMessage()));
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in creating batch update for ping results: {}", exception.getMessage());
+        }
+    }
+
     /**
      * Stops the verticle, unregistering the event bus consumer and cleaning up.
      */
     @Override
-    public void stop(Promise<Void> stopPromise) throws Exception
+    public void stop(Promise<Void> stopPromise)
     {
         if (localConsumer != null)
         {
             localConsumer.unregister()
                     .onSuccess(v -> LOGGER.info("AvailabilityPollingEngine event bus consumer unregistered."))
-                    .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
+                    .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}"
+                            , err.getMessage()));
         }
-
-        LOGGER.info("PollingProcessorEngine stopped.");
 
         stopPromise.complete();
     }
+
 }

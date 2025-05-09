@@ -51,9 +51,9 @@ public class PollingProcessorEngine extends AbstractVerticle
     {
         try
         {
-            // todo harsh how many threads defined and why
             vertx.executeBlocking(() ->
-                    Utils.spawnGoPlugin(message.body(), Constants.METRICS), false, asyncResult ->
+                    Utils.spawnGoPlugin(message.body(), Constants.METRICS)
+                    , false, asyncResult ->
             {
                 if (asyncResult.succeeded())
                 {
@@ -65,8 +65,6 @@ public class PollingProcessorEngine extends AbstractVerticle
 
                         return;
                     }
-
-                    LOGGER.info("Plugin processed batch, sending {} entries to DB", pluginOutput.size());
 
                     try
                     {
@@ -85,10 +83,8 @@ public class PollingProcessorEngine extends AbstractVerticle
                         DATABASE_SERVICE.executeQuery(new JsonObject()
                                         .put(Constants.QUERY, QUERY_INSERT_POLLED_RESULTS)
                                         .put(Constants.PARAMS, batchParams))
-                                .onSuccess(result ->
-                                        LOGGER.info("Successfully processed {} entries to DB", pluginOutput.size()))
-                                .onFailure(error ->
-                                        LOGGER.error("Database service failed: {}", error.getMessage()));
+                                        .onFailure(error -> LOGGER.error("Database service failed: {}",
+                                                error.getMessage()));
                     }
                     catch (Exception exception)
                     {
@@ -119,8 +115,6 @@ public class PollingProcessorEngine extends AbstractVerticle
                     .onSuccess(v -> LOGGER.info("PollingProcessorEngine event bus consumer unregistered."))
                     .onFailure(err -> LOGGER.error("Failed to unregister event bus consumer: {}", err.getMessage()));
         }
-
-        LOGGER.info("PollingProcessorEngine stopped.");
 
         stopPromise.complete();
     }

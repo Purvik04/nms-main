@@ -75,8 +75,6 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                             .put(Constants.QUERY, Utils.buildJoinQuery(FETCH_DISCOVERY_PROFILES_QUERY,deviceIds.size()))
                             .put(Constants.PARAMS, deviceIds))
                     .onSuccess(asyncResult ->
-                    {
-                        LOGGER.info(asyncResult.toString());
 
                         // Run discovery process in a blocking thread
                         vertx.executeBlocking(() ->
@@ -84,14 +82,14 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                             var discoveryResponse = new JsonArray();
 
                             // If no data is returned, return early
-                            if (asyncResult.getJsonArray(Constants.RESPONSE).isEmpty())
+                            if (asyncResult.getJsonArray(Constants.DATA).isEmpty())
                             {
-                                LOGGER.info("No discovery profiles found for IDs: {}", discoveryRequest.body());
+                                LOGGER.error("No discovery profiles found for IDs: {}", discoveryRequest.body());
 
                                 return new DiscoveryResult(discoveryResponse, "No discovery profiles found");
                             }
 
-                            var devicesData = asyncResult.getJsonArray(Constants.RESPONSE);
+                            var devicesData = asyncResult.getJsonArray(Constants.DATA);
 
                             var idToDeviceDataMap = new HashMap<Integer, JsonObject>();
 
@@ -101,8 +99,6 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                                 idToDeviceDataMap.put(devicesData.getJsonObject(index).getInteger(Constants.ID),
                                         devicesData.getJsonObject(index));
                             }
-
-                            LOGGER.info("Processing fping of : {}", devicesData);
 
                             // Run fping to check which devices are reachable
                             var pingResult = Utils.ping(devicesData);
@@ -141,8 +137,6 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                                 return new DiscoveryResult(discoveryResponse, null);
                             }
 
-                            LOGGER.info("Processing SSH discovery of : {}", sshFilteredDevicesData);
-
                             // Run SSH discovery using Go plugin
                             var pluginOutput = Utils.spawnGoPlugin(sshFilteredDevicesData, Constants.DISCOVERY);
 
@@ -153,10 +147,7 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                                 return new DiscoveryResult(discoveryResponse.clear(), "Go plugin execution failed");
                             }
 
-                            LOGGER.info("Discovery Process Completed");
-
                             // Add plugin output to the response
-
                             for (var index = 0; index < pluginOutput.size(); index++)
                             {
                                 var pluginResult = pluginOutput.getJsonObject(index);
@@ -167,54 +158,7 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                                         .put(STEP, pluginResult.getString(STEP)));
                             }
 
-                            LOGGER.info("Discovery response prepared");
-
-                            var batchParams = new JsonArray();
-
-                            // Prepare parameters for batch update to DB
-                            for (var index = 0; index < discoveryResponse.size(); index++)
-                            {
-                                var responseObject = discoveryResponse.getJsonObject(index);
-
-                                batchParams.add(new JsonArray()
-                                        .add(responseObject.getBoolean(Constants.SUCCESS))
-                                        .add(responseObject.getInteger(Constants.ID)));
-                            }
-
-                            LOGGER.info("Batch parmams prepared Completed");
-
-                            var dbPromise = Promise.<DiscoveryResult>promise();
-
-                            // Send batch update request to database
-                            DATABASE_SERVICE.executeQuery(new JsonObject()
-                                            .put(Constants.QUERY, UPDATE_DISCOVERY_RESULT_QUERY)
-                                            .put(Constants.PARAMS, batchParams))
-                                    .onSuccess(updateResult ->
-                                    {
-                                        LOGGER.info("Database update successful");
-
-                                        dbPromise.complete(new DiscoveryResult(discoveryResponse, null));
-                                    })
-                                    .onFailure(updateError ->
-                                    {
-                                        LOGGER.error("Database update failed: {}", updateError.getMessage());
-
-                                        dbPromise.complete(new DiscoveryResult(discoveryResponse.clear(),
-                                                "Database update failed: " + updateError.getMessage()));
-                                    });
-
-                            try
-                            {
-                                // Wait for DB update to complete and return result
-                                return dbPromise.future().toCompletionStage().toCompletableFuture().get();
-                            }
-                            catch (Exception exception)
-                            {
-                                LOGGER.error("Error in waiting for database response: {}", exception.getMessage());
-
-                                return new DiscoveryResult(discoveryResponse.clear(),
-                                        "Error in waiting for database response: " + exception.getMessage());
-                            }
+                            return new DiscoveryResult(discoveryResponse, null);
 
                         }, false, result ->
                         {
@@ -227,8 +171,37 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                             }
                             else
                             {
-                                if (result.result().isSuccess())
+                                var discoveryResult = result.result();
+
+                                if (discoveryResult.isSuccess())
                                 {
+                                    var discoveryResponse = discoveryResult.discoveryResponse();
+
+                                    var batchParams = new JsonArray();
+
+                                    // Prepare parameters for batch update to DB
+                                    for (var index = 0; index < discoveryResponse.size(); index++)
+                                    {
+                                        var responseObject = discoveryResponse.getJsonObject(index);
+
+                                        batchParams.add(new JsonArray()
+                                                .add(responseObject.getBoolean(Constants.SUCCESS))
+                                                .add(responseObject.getInteger(Constants.ID)));
+                                    }
+
+                                    // Send batch update request to database
+                                    DATABASE_SERVICE.executeQuery(new JsonObject()
+                                                    .put(Constants.QUERY, UPDATE_DISCOVERY_RESULT_QUERY)
+                                                    .put(Constants.PARAMS, batchParams))
+                                            .onSuccess(updateResult -> discoveryRequest.reply(discoveryResponse))
+                                            .onFailure(updateError ->
+                                            {
+                                                LOGGER.error("Database update failed: {}", updateError.getMessage());
+
+                                                discoveryRequest.fail(500, "Database update failed: "
+                                                        + updateError.getMessage());
+                                            });
+
                                     discoveryRequest.reply(result.result().discoveryResponse());
                                 }
                                 else
@@ -238,9 +211,8 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
                                     discoveryRequest.fail(500, result.result().errorMessage());
                                 }
                             }
-                        });
-
-                    }).onFailure(error ->
+                        })
+                    ).onFailure(error ->
                     {
                         // If initial query to fetch devices failed
                         LOGGER.error("Database query failed: {}", error.getMessage());

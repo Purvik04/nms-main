@@ -6,15 +6,24 @@
         </encoder>
     </appender>
 
-    <!-- Set all loggers to INFO level by default -->
+    <!-- File appender with rolling policy -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger: log to both console and file -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
     </root>
 
-    <!-- Specific logger adjustments -->
-    <logger name="io.netty.handler.ssl.BouncyCastlePemReader" level="INFO"/>
+    <!-- Optional: adjust specific package log levels -->
     <logger name="io.netty" level="INFO"/>
-
-    <!-- Add any other specific loggers here if needed -->
-    <!-- <logger name="com.yourpackage" level="WARN"/> -->
 </configuration>

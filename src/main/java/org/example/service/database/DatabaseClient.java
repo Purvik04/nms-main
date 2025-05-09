@@ -52,13 +52,11 @@ public class DatabaseClient
                         .setUser(MotaDataConfigUtil.getConfig().getString(USER, Constants.DB_USER))
                         .setPassword(MotaDataConfigUtil.getConfig().getString(PASSWORD))
                         .setReconnectAttempts(2)        // Retry attempts on failure
-                        .setReconnectInterval(2000L)
-                        .setIdleTimeout(10)
-                        .setIdleTimeoutUnit(TimeUnit.SECONDS);   // Retry interval in milliseconds
+                        .setReconnectInterval(2000L)   // Retry interval in milliseconds
+                        .setIdleTimeout(60)
+                        .setIdleTimeoutUnit(TimeUnit.SECONDS);
 
                 // Configure pool options
-
-                //todo harsh why 5
                 var poolOptions = new PoolOptions()
                         .setMaxSize(5); // Max number of connections in pool
 
@@ -69,28 +67,17 @@ public class DatabaseClient
                         .using(BootStrap.getVertx())
                         .build();
 
-
-                for(var index = 0 ; index < 10; index++)
+                instance.query(Constants.DB_CONNECTION_CHECK_QUERY).execute(asyncResult ->
                 {
-                    instance.getConnection(handler ->{
-                        if(handler.failed())
-                        {
-                            LOGGER.error(handler.cause().getMessage(), handler.cause());
-                        }
-                    });
-                }
-
-//                instance.query(Constants.DB_CONNECTION_CHECK_QUERY).execute(asyncResult ->
-//                {
-//                    if(asyncResult.succeeded())
-//                    {
-//                        LOGGER.info("Connected to database");
-//                    }
-//                    else
-//                    {
-//                        instance = null;
-//                    }
-//                });
+                    if(asyncResult.succeeded())
+                    {
+                        LOGGER.info("Connected to database");
+                    }
+                    else
+                    {
+                        instance = null;
+                    }
+                });
             }
             catch (Exception exception)
             {

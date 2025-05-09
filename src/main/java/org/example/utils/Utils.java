@@ -36,6 +36,12 @@ public class Utils
 
     private static final String SECURE_COMPRESSED_FILE_PATH = "devices.snappy.aes.b64.txt";
 
+    private static final String PING_PACKET_COUNT = String.valueOf(MotaDataConfigUtil.getConfig().getInteger(Constants.PING_PACKET_COUNT
+            ,Constants.DEFAULT_PING_PACKET_COUNT));
+
+    private static final String PING_PACKET_TIMEOUT = String.valueOf(MotaDataConfigUtil.getConfig().getInteger(Constants.PING_PACKET_TIMEOUT_IN_MILLISECONDS
+            ,Constants.DEFAULT_PING_PACKET_TIMEOUT_IN_MILLISECONDS));
+
     /**
      * Extracts the table name from the request's routing context based on the path and HTTP method.
      *
@@ -87,12 +93,12 @@ public class Utils
 
             var ipList = new ArrayList<String>(devices.size());
 
-            for (var i = 0; i < devices.size(); i++)
+            for (var index = 0; index < devices.size(); index++)
             {
-                ipList.add(devices.getJsonObject(i).getString(Constants.IP));
+                ipList.add(devices.getJsonObject(index).getString(Constants.IP));
 
-                ipToDeviceIdMap.put(devices.getJsonObject(i).getString(Constants.IP),
-                        devices.getJsonObject(i).getInteger(Constants.ID));
+                ipToDeviceIdMap.put(devices.getJsonObject(index).getString(Constants.IP),
+                        devices.getJsonObject(index).getInteger(Constants.ID));
             }
 
             devices.clear();
@@ -101,10 +107,10 @@ public class Utils
 
             command.add("fping");
             command.add("-c");
-            command.add("3");
+            command.add(PING_PACKET_COUNT);
             command.add("-q");
             command.add("-t");
-            command.add("500");
+            command.add(PING_PACKET_TIMEOUT);
             command.add("-p");
             command.add("0");
             command.addAll(ipList);
@@ -119,21 +125,18 @@ public class Utils
                 {
                     var ip = line.split(Constants.COLON_SEPARATOR)[0].trim();
 
-                    var isDown = line.contains("100%");
-
-                    devices.add(new JsonObject()
-                            .put(Constants.ID, ipToDeviceIdMap.get(ip))
-                            .put(Constants.STATUS, isDown ? Constants.DOWN : Constants.UP));
+                    devices.add(parsePingResult(line.trim(),ipToDeviceIdMap.get(ip)));
                 }
             }
 
-            if (!process.waitFor(1, TimeUnit.SECONDS))
+            if (!process.waitFor(MotaDataConfigUtil.getConfig()
+                    .getInteger(Constants.PING_PROCESS_TIMEOUT,Constants.DEFAULT_PING_PROCESS_TIMEOUT), TimeUnit.SECONDS))
             {
                 LOGGER.error("Ping Process timeout! Process killed.");
 
                 process.destroyForcibly();
 
-                return devices; // Empty response on timeout
+                return devices;
             }
 
             var exitCode = process.exitValue();
@@ -149,8 +152,6 @@ public class Utils
         }
         catch (Exception exception)
         {
-            Thread.currentThread().interrupt();
-
             LOGGER.error("Error during fping execution: {}", exception.getMessage());
 
             return new JsonArray();
@@ -165,7 +166,7 @@ public class Utils
     }
 
 
-    private static void parseFpingResult(String summaryLine, JsonObject result, int id)
+    private static JsonObject parsePingResult(String summaryLine, int id)
     {
         try
         {
@@ -178,8 +179,8 @@ public class Utils
 
                 var loss = Integer.parseInt(stats[2].replace(Constants.PERCENTAGE_SEPARATOR, Constants.EMPTY_STRING));
 
-                result.put(Constants.ID, id).put(Constants.PACKET_SEND, Integer.parseInt(stats[0]))
-                        .put(Constants.PACKET_RECEIVE, Integer.parseInt(stats[1]))
+                return new JsonObject().put(Constants.ID, id).put(Constants.PACKETS_SEND, Integer.parseInt(stats[0]))
+                        .put(Constants.PACKETS_RECEIVED, Integer.parseInt(stats[1]))
                         .put(Constants.PACKET_LOSS_PERCENTAGE,loss)
                         .put(Constants.STATUS, loss == LOSS_PERCENTAGE_100 ? Constants.DOWN : Constants.UP);
             }
@@ -187,11 +188,11 @@ public class Utils
         catch (Exception exception)
         {
             LOGGER.error("Error in parsing ping result: {}", exception.getMessage());
-
-            result.put(Constants.ID, id).put(Constants.PACKET_SEND,DEFAULT_PACKET_SEND)
-                    .put(Constants.PACKET_RECEIVE,DEFAULT_PACKET_RECEIVE)
-                    .put(Constants.PACKET_LOSS_PERCENTAGE,LOSS_PERCENTAGE_100).put(Constants.STATUS, Constants.DOWN);
         }
+
+        return new JsonObject().put(Constants.ID, id).put(Constants.PACKETS_SEND,DEFAULT_PACKET_SEND)
+                .put(Constants.PACKETS_RECEIVED,DEFAULT_PACKET_RECEIVE)
+                .put(Constants.PACKET_LOSS_PERCENTAGE,LOSS_PERCENTAGE_100).put(Constants.STATUS, Constants.DOWN);
     }
 
     /**
@@ -235,7 +236,8 @@ public class Utils
                 }
             }
 
-            var finished = process.waitFor(5, TimeUnit.SECONDS);
+            var finished = process.waitFor(MotaDataConfigUtil.getConfig().getInteger(Constants.PLUGIN_PROCESS_TIMEOUT,
+                            Constants.DEFAULT_PLUGIN_PROCESS_TIMEOUT), TimeUnit.SECONDS);
 
             if (!finished)
             {
@@ -305,7 +307,7 @@ public class Utils
             var table = input.getString(Constants.TABLE_NAME);
 
             // JSON object with column-value pairs for insert/update
-            var data = input.getJsonObject(Constants.RESPONSE, new JsonObject());
+            var data = input.getJsonObject(Constants.DATA, new JsonObject());
 
             // JSON object with condition column-value pairs for WHERE clause
             var conditions = input.getJsonObject(Constants.CONDITIONS, new JsonObject());
@@ -318,10 +320,9 @@ public class Utils
             {
                 case Constants.DB_INSERT:
                     // INSERT INTO table (col1, col2) VALUES ($1, $2)
-                    var keys = data.fieldNames().stream()
-                            .map(column -> column.replace("_",".")).toList();
+                    var keys = data.fieldNames();
 
-                    var columnsStr = String.join(", ", keys);
+                    var columnsStr = String.join(Constants.COMMA_SEPARATOR, keys);
 
                     var placeholders = Utils.buildPlaceholders(keys.size());
 
@@ -348,7 +349,7 @@ public class Utils
                     {
                         var whereClause = Utils.buildWhereClause(conditions, params, 1);
 
-                        query.append(" ").append(whereClause);
+                        query.append(Constants.SPACE_SEPARATOR).append(whereClause);
                     }
                     break;
 
@@ -362,7 +363,7 @@ public class Utils
                     {
                         query.append(key).append(" = $").append(index++);
 
-                        if (index <= data.size()) query.append(", ");
+                        if (index <= data.size()) query.append(Constants.COMMA_SEPARATOR);
 
                         params.add(data.getValue(key));
                     }
@@ -382,7 +383,8 @@ public class Utils
                     if (!conditions.isEmpty())
                     {
                         var whereClause = Utils.buildWhereClause(conditions, params, 1);
-                        query.append(" ").append(whereClause);
+
+                        query.append(Constants.SPACE_SEPARATOR).append(whereClause);
                     }
                     break;
 
@@ -452,7 +454,7 @@ public class Utils
         {
             placeHolders.append("$").append(index);
 
-            if (index < count) placeHolders.append(", ");
+            if (index < count) placeHolders.append(Constants.COMMA_SEPARATOR);
         }
 
         return placeHolders.toString();

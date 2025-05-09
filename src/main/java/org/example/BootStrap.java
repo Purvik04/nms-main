@@ -57,7 +57,7 @@ public class BootStrap
     private static final int EVENTLOOP_POOL_SIZE = MotaDataConfigUtil.getConfig()
             .getInteger("eventloop.pool.size", 7);
     private static final int WORKER_POOL_SIZE = MotaDataConfigUtil.getConfig()
-            .getInteger("worker.pool.size", 1);
+            .getInteger("worker.pool.size", 5);
 
     private static final Vertx VERTX = Vertx.vertx(new VertxOptions()
             .setWorkerPoolSize(WORKER_POOL_SIZE)
@@ -176,15 +176,31 @@ public class BootStrap
                 .onSuccess(res -> LOGGER.info("All verticles started successfully in sequence"))
                 .onFailure(err ->
                 {
-                    LOGGER.error("Deployment failed at {}: {}", err.getStackTrace()[0].getClassName(), err.getMessage());
+                    LOGGER.error("Deployment failed at {}", err.getMessage());
 
                     // Undeploy already-deployed verticles
-                    for (String id : deployedVerticlesIds)
+                    var undeployChain = Future.<Void>succeededFuture();
+
+                    for (var i = deployedVerticlesIds.size() - 1; i >= 0; i--)
                     {
-                        VERTX.undeploy(id);
+                        var id = deployedVerticlesIds.get(i);
+
+                        undeployChain = undeployChain.compose(v ->
+                                VERTX.undeploy(id)
+                                        .onSuccess(x -> LOGGER.info("Undeployed verticle: {}", id))
+                                        .onFailure(e -> LOGGER.warn("Failed to undeploy verticle {}: {}", id, e.getMessage()))
+                                        .mapEmpty()
+                        );
                     }
-                    // todo why used close/ arrayList one by one undeploy
-                    VERTX.close();
+
+                    undeployChain
+                            .onComplete(done -> {
+                                LOGGER.info("All verticles undeployed. Now shutting down Vert.x...");
+                                VERTX.close()
+                                        .onSuccess(v -> LOGGER.info("Vert.x closed successfully."))
+                                        .onFailure(e -> LOGGER.error("Error while closing Vert.x: {}", e.getMessage()));
+                            });
+
                 });
     }
 }

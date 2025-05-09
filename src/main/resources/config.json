@@ -4,7 +4,7 @@
   "ssl.keyStore.password": "motadata",
   "jwt.secret.key" : "default-secret-key",
   "jwt.encryption.algorithm" : "HS256",
-  "jwtExpiryTimeInSeconds": 86400,
+  "jwt.expiry.time.in.seconds": 86400,
   "database.host": "localhost",
   "database.port" : 5432,
   "database.name" : "nms_lite",
@@ -20,5 +20,9 @@
   "worker.pool.size" : 5,
   "eventloop.pool.size" : 7,
   "server.host": "localhost",
-  "https.port" : 8080
-}
+  "https.port" : 8080,
+  "ping.process.timeout" : 1,
+  "plugin.process.timeout" : 5,
+  "ping.packet.timeout.in.milliseconds" : 500,
+  "ping.packet.count" : 3
+ }

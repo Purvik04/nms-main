@@ -72,10 +72,11 @@ public class DatabaseServiceImpl implements DatabaseService
 
         var tuple = Tuple.tuple();
 
+
         // Append RETURNING id to insert/update if not present
-        if ((query.trim().toLowerCase().startsWith(Constants.DB_INSERT) ||
-                query.trim().toLowerCase().startsWith(Constants.DB_UPDATE)) &&
-                !query.toLowerCase().contains("returning"))
+        if ((query.trim().startsWith(Constants.DB_INSERT) ||
+                query.trim().startsWith(Constants.DB_UPDATE)) &&
+                !query.trim().toLowerCase().contains("returning"))
         {
             query += RETURNING_ID;
         }
@@ -93,11 +94,9 @@ public class DatabaseServiceImpl implements DatabaseService
             {
                 if (asyncResult.succeeded())
                 {
-                    LOGGER.info("Query executed successfully");
-
                     try
                     {
-                        var reponse = new JsonArray();
+                        var response = new JsonArray();
 
                         if (asyncResult.result().size() > 0)
                         {
@@ -110,8 +109,7 @@ public class DatabaseServiceImpl implements DatabaseService
                                 {
                                     try
                                     {
-                                        responseObject.put(row.getColumnName(index).replace("_","."),
-                                                row.getValue(index));
+                                        responseObject.put(row.getColumnName(index),row.getValue(index));
                                     }
                                     catch (Exception exception)
                                     {
@@ -119,14 +117,14 @@ public class DatabaseServiceImpl implements DatabaseService
                                     }
                                 }
 
-                                reponse.add(responseObject);
+                                response.add(responseObject);
                             });
                         }
 
                         // Complete promise with results
                         promise.complete(new JsonObject()
                                 .put(Constants.SUCCESS, Constants.TRUE)
-                                .put(Constants.RESPONSE, reponse));
+                                .put(Constants.DATA, response));
                     }
                     catch (Exception exception)
                     {
@@ -183,15 +181,10 @@ public class DatabaseServiceImpl implements DatabaseService
                 batchParams.add(tuple);
             }
 
-            LOGGER.info("Executing Batch Query: {} with {} parameter sets", query, batchParams.size());
-
-
             CLIENT.preparedQuery(query).executeBatch(batchParams, asyncResult ->
             {
                 if (asyncResult.succeeded())
                 {
-                    LOGGER.info("Batch query executed successfully");
-
                     promise.complete(new JsonObject()
                             .put(Constants.SUCCESS, Constants.TRUE));
                 }
