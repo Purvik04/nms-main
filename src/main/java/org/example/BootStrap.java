@@ -149,7 +149,7 @@ public class BootStrap
                         .setInstances(AVAILABILITY_POLLING_ENGINE_INSTANCES)),
                 new VerticleConfig(PollingProcessorEngine.class, new DeploymentOptions()
                         .setInstances(POLLING_PROCESSOR_INSTANCES)),
-                new VerticleConfig(MetricPollingVerticle.class, new DeploymentOptions()
+                new VerticleConfig(MetricPollingEngine.class, new DeploymentOptions()
                         .setInstances(METRIC_POLLING_ENGINE_INSTANCES)),
                 new VerticleConfig(PollerEngine.class, new DeploymentOptions()
                         .setInstances(POLLER_ENGINE_INSTANCES)),

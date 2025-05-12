@@ -52,7 +52,7 @@ public class Utils
     {
         try
         {
-            String path  = context.normalizedPath().split(Constants.PATH_SEPARATOR)[2];
+            var path  = context.normalizedPath().split(Constants.PATH_SEPARATOR)[2];
 
             var method = context.request().method().name();
 
@@ -316,7 +316,7 @@ public class Utils
             var columns = input.getJsonArray(Constants.COLUMNS, new JsonArray());
 
             // Switch based on the requested SQL operation
-            switch (input.getString(Constants.OPERATION).toLowerCase())
+            switch (input.getString(Constants.OPERATION))
             {
                 case Constants.DB_INSERT:
                     // INSERT INTO table (col1, col2) VALUES ($1, $2)

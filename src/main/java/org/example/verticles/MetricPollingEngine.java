@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
  * It filters devices that are marked "UP", fetches their provisioned job & credential data,
  * and passes the batch to the PollingProcessor.
  */
-public class MetricPollingVerticle extends AbstractVerticle
+public class MetricPollingEngine extends AbstractVerticle
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MetricPollingVerticle.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MetricPollingEngine.class);
 
     // Service proxy for asynchronous database interactions
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
@@ -31,15 +31,25 @@ public class MetricPollingVerticle extends AbstractVerticle
 
     // Keep reference to the event bus consumer to unregister it on stop
     private MessageConsumer<JsonArray> localConsumer;
+
     /**
      * Registers a local EventBus consumer for metric polling events.
      */
     @Override
     public void start(Promise<Void> startPromise)
     {
-        localConsumer = vertx.eventBus().localConsumer(Constants.METRIC_POLLING_ADDRESS, this::handleMetricPolling);
+        try
+        {
+            localConsumer = vertx.eventBus().localConsumer(Constants.METRIC_POLLING_ADDRESS, this::handleMetricPolling);
 
-        startPromise.complete();
+            startPromise.complete();
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in deploying metric polling engine: {}", exception.getMessage());
+
+            startPromise.fail(exception);
+        }
     }
 
     /**

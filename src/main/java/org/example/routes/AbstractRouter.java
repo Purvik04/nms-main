@@ -162,9 +162,7 @@ public abstract class AbstractRouter implements RouterHandler
             reusableQueryObject.put(Constants.OPERATION, Constants.DB_SELECT)
                     .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context));
 
-            var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
-
-            DATABASE_SERVICE.executeQuery(query)
+            DATABASE_SERVICE.executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
                     .onSuccess(reply -> context.response().setStatusCode(Constants.SC_200)
                             .end(reply.toString()))
                     .onFailure(error -> dbServiceFailed(context, error.getMessage()));

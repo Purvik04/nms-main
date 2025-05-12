@@ -1,0 +1,306 @@
+10:38:22.283 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+10:38:22.286 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+10:38:22.286 [main] INFO  o.f.c.i.license.VersionPrinter - 
+10:38:22.697 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+10:38:22.706 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+10:38:22.743 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.028s)
+10:38:22.799 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+10:38:22.800 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+10:38:22.806 [main] INFO  org.example.BootStrap - Database migration complete.
+10:38:22.962 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+10:38:22.965 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+10:38:23.052 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+10:38:23.143 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+10:38:23.159 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+10:38:23.160 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+10:38:23.161 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+10:38:23.162 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+10:38:23.163 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+10:38:23.163 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+10:38:33.175 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+10:39:00.257 [vert.x-eventloop-thread-2] ERROR io.vertx.ext.web.RoutingContext - Unhandled exception in router
+io.vertx.ext.web.handler.HttpException: Unauthorized
+Caused by: io.vertx.core.impl.NoStackTraceThrowable: Invalid JWT token: token expired.
+10:39:09.412 [vert.x-eventloop-thread-1] ERROR o.e.s.database.DatabaseServiceImpl - Query execution failed: ERROR: duplicate key value violates unique constraint "credential_profiles_credential_profile_name_key" (23505)
+10:42:39.954 [vert.x-eventloop-thread-1] ERROR o.e.s.database.DatabaseServiceImpl - Query execution failed: ERROR: duplicate key value violates unique constraint "credential_profiles_credential_profile_name_key" (23505)
+10:43:30.502 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+10:43:30.503 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+10:43:30.503 [main] INFO  o.f.c.i.license.VersionPrinter - 
+10:43:30.887 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+10:43:30.895 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+10:43:30.930 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.024s)
+10:43:30.993 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+10:43:30.994 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+10:43:31.003 [main] INFO  org.example.BootStrap - Database migration complete.
+10:43:31.222 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+10:43:31.226 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+10:43:31.339 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+10:43:31.400 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+10:43:31.423 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+10:43:31.424 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+10:43:31.426 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+10:43:31.427 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+10:43:31.429 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+10:43:31.429 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+10:43:41.439 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+10:47:15.468 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+10:47:15.469 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+10:47:15.469 [main] INFO  o.f.c.i.license.VersionPrinter - 
+10:47:15.839 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+10:47:15.848 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+10:47:15.880 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.024s)
+10:47:15.946 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+10:47:15.947 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+10:47:15.953 [main] INFO  org.example.BootStrap - Database migration complete.
+10:47:16.087 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+10:47:16.089 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+10:47:16.180 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+10:47:16.277 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+10:47:16.293 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+10:47:16.295 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+10:47:16.297 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+10:47:16.298 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+10:47:16.299 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+10:47:16.300 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+10:47:26.309 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+11:07:50.321 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+11:07:50.322 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+11:07:50.322 [main] INFO  o.f.c.i.license.VersionPrinter - 
+11:07:50.671 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+11:07:50.679 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+11:07:50.710 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.022s)
+11:07:50.783 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+11:07:50.784 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+11:07:50.792 [main] INFO  org.example.BootStrap - Database migration complete.
+11:07:50.807 [main] INFO  org.example.BootStrap - All verticles undeployed. Now shutting down Vert.x...
+11:07:50.907 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+11:07:50.909 [vert.x-eventloop-thread-1] ERROR io.vertx.core.impl.ContextImpl - Unhandled exception
+java.util.concurrent.RejectedExecutionException: event executor terminated
+	at io.netty.util.concurrent.SingleThreadEventExecutor.reject(SingleThreadEventExecutor.java:931)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.offerTask(SingleThreadEventExecutor.java:350)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.addTask(SingleThreadEventExecutor.java:343)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.execute(SingleThreadEventExecutor.java:833)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.execute0(SingleThreadEventExecutor.java:824)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.execute(SingleThreadEventExecutor.java:814)
+	at io.vertx.core.impl.EventLoopExecutor.execute(EventLoopExecutor.java:35)
+	at io.vertx.core.impl.ContextImpl.execute(ContextImpl.java:300)
+	at io.vertx.core.impl.ContextImpl.execute(ContextImpl.java:288)
+	at io.vertx.core.impl.future.FutureBase.emitSuccess(FutureBase.java:57)
+	at io.vertx.core.impl.future.FutureImpl.tryComplete(FutureImpl.java:259)
+	at io.vertx.core.Promise.complete(Promise.java:66)
+	at io.vertx.core.impl.DeploymentManager.lambda$null$4(DeploymentManager.java:224)
+	at io.vertx.core.impl.future.FutureImpl$4.onSuccess(FutureImpl.java:176)
+	at io.vertx.core.impl.future.FutureBase.emitSuccess(FutureBase.java:66)
+	at io.vertx.core.impl.future.FutureImpl.addListener(FutureImpl.java:231)
+	at io.vertx.core.impl.future.FutureImpl.onComplete(FutureImpl.java:199)
+	at io.vertx.core.impl.DeploymentManager.lambda$doDeploy$5(DeploymentManager.java:211)
+	at io.vertx.core.impl.ContextInternal.dispatch(ContextInternal.java:279)
+	at io.vertx.core.impl.ContextInternal.dispatch(ContextInternal.java:261)
+	at io.vertx.core.impl.ContextInternal.lambda$runOnContext$0(ContextInternal.java:59)
+	at io.netty.util.concurrent.AbstractEventExecutor.runTask(AbstractEventExecutor.java:173)
+	at io.netty.util.concurrent.AbstractEventExecutor.safeExecute(AbstractEventExecutor.java:166)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:469)
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:569)
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:994)
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+11:07:50.912 [vert.x-eventloop-thread-7] INFO  org.example.BootStrap - Vert.x closed successfully.
+12:11:21.876 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+12:11:21.877 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+12:11:21.877 [main] INFO  o.f.c.i.license.VersionPrinter - 
+12:11:22.373 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+12:11:22.388 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+12:11:22.444 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.043s)
+12:11:22.525 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+12:11:22.526 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+12:11:22.534 [main] INFO  org.example.BootStrap - Database migration complete.
+12:11:22.680 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+12:11:22.682 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+12:11:22.771 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+12:11:22.833 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+12:11:22.847 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+12:11:22.849 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+12:11:22.850 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+12:11:22.853 [vert.x-eventloop-thread-0] ERROR org.example.BootStrap - Deployment failed at Poller engine failed.
+12:11:22.855 [vert.x-eventloop-thread-5] INFO  o.e.verticles.MetricPollingVerticle - MetricPollingEngine event bus consumer unregistered.
+12:11:22.856 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: 2c9e36f2-069d-4342-a355-26310827379b
+12:11:22.856 [vert.x-eventloop-thread-4] INFO  o.e.verticles.PollingProcessorEngine - PollingProcessorEngine event bus consumer unregistered.
+12:11:22.856 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: 35520011-329e-4df3-996a-dd3ddbe2f29b
+12:11:22.857 [vert.x-eventloop-thread-3] INFO  o.e.v.AvailabilityPollingEngine - AvailabilityPollingEngine event bus consumer unregistered.
+12:11:22.857 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: 8cd52f6e-276f-47cb-a235-c022e3eb4e8f
+12:11:22.859 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: fc733c62-701a-459e-b8b3-8939dc52f300
+12:11:22.865 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: c3e96cbf-ada0-4a44-9bc0-bb77d53d0c64
+12:11:22.865 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles undeployed. Now shutting down Vert.x...
+12:11:22.871 [vert.x-eventloop-thread-7] INFO  org.example.BootStrap - Vert.x closed successfully.
+12:36:42.117 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+12:36:42.119 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+12:36:42.119 [main] INFO  o.f.c.i.license.VersionPrinter - 
+12:36:42.537 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+12:36:42.549 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+12:36:42.595 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.033s)
+12:36:42.662 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+12:36:42.663 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+12:36:42.668 [main] INFO  org.example.BootStrap - Database migration complete.
+12:36:42.794 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+12:36:42.796 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+12:36:42.900 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+12:36:42.950 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+12:36:42.967 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+12:36:42.969 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+12:36:42.970 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+12:36:42.973 [vert.x-eventloop-thread-0] ERROR org.example.BootStrap - Deployment failed at Poller engine failed.
+12:36:42.974 [vert.x-eventloop-thread-5] INFO  o.e.verticles.MetricPollingVerticle - MetricPollingEngine event bus consumer unregistered.
+12:36:42.975 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: 0404f716-3510-47e8-8512-964aa9531ba2
+12:36:42.976 [vert.x-eventloop-thread-4] INFO  o.e.verticles.PollingProcessorEngine - PollingProcessorEngine event bus consumer unregistered.
+12:36:42.976 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: b1a9e36a-7a4b-4120-bb3a-9d532502951f
+12:36:42.976 [vert.x-eventloop-thread-3] INFO  o.e.v.AvailabilityPollingEngine - AvailabilityPollingEngine event bus consumer unregistered.
+12:36:42.977 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: fc437156-ba4b-44e9-a5a0-024355ab51fb
+12:36:42.977 [vert.x-eventloop-thread-2] INFO  org.example.verticles.Server - Server verticle undeployed successfully
+12:36:42.979 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: e9358a8a-0465-464f-9158-9d75941d5a49
+12:36:42.985 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Database verticle undeployed successfully
+12:36:42.987 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: dcc9b5f6-d2ed-49da-8dd9-bf1e049d9421
+12:36:42.987 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles undeployed. Now shutting down Vert.x...
+12:36:42.993 [vert.x-eventloop-thread-7] INFO  org.example.BootStrap - Vert.x closed successfully.
+17:21:24.855 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+17:21:24.855 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+17:21:24.856 [main] INFO  o.f.c.i.license.VersionPrinter - 
+17:21:25.422 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+17:21:25.436 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+17:21:25.465 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.021s)
+17:21:25.525 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+17:21:25.526 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+17:21:25.532 [main] INFO  org.example.BootStrap - Database migration complete.
+17:21:25.716 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+17:21:25.720 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+17:21:25.866 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+17:21:25.973 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+17:21:26.000 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+17:21:26.003 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+17:21:26.004 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+17:21:26.013 [vert.x-eventloop-thread-0] ERROR org.example.BootStrap - Deployment failed at Poller engine failed.
+17:21:26.017 [vert.x-eventloop-thread-5] INFO  o.e.verticles.MetricPollingVerticle - MetricPollingEngine event bus consumer unregistered.
+17:21:26.019 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: d74d41eb-5edc-485b-bed8-ea1d36b88d7c
+17:21:26.020 [vert.x-eventloop-thread-4] INFO  o.e.verticles.PollingProcessorEngine - PollingProcessorEngine event bus consumer unregistered.
+17:21:26.020 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: a189905e-695a-4a6e-b3fd-4d8abd435158
+17:21:26.021 [vert.x-eventloop-thread-3] INFO  o.e.v.AvailabilityPollingEngine - AvailabilityPollingEngine event bus consumer unregistered.
+17:21:26.022 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: b867622c-b6dd-441a-a1dc-3bd7d278f849
+17:21:26.022 [vert.x-eventloop-thread-2] INFO  org.example.verticles.Server - Server verticle undeployed successfully
+17:21:26.027 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: 5f165b7b-e60d-4b43-a7de-ca675d6708a2
+17:21:26.035 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Database verticle undeployed successfully
+17:21:26.038 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Undeployed verticle: c906f091-db86-4920-a42d-62aa0a5eaf42
+17:21:26.039 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles undeployed. Now shutting down Vert.x...
+17:21:26.051 [vert.x-eventloop-thread-7] INFO  org.example.BootStrap - Vert.x closed successfully.
+17:21:55.541 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+17:21:55.545 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+17:21:55.546 [main] INFO  o.f.c.i.license.VersionPrinter - 
+17:21:56.040 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+17:21:56.049 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+17:21:56.087 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.028s)
+17:21:56.159 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+17:21:56.160 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+17:21:56.167 [main] INFO  org.example.BootStrap - Database migration complete.
+17:21:56.299 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+17:21:56.301 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+17:21:56.391 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+17:21:56.462 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+17:21:56.480 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+17:21:56.481 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+17:21:56.483 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+17:21:56.484 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+17:21:56.485 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+17:21:56.485 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+17:22:05.663 [vert.x-eventloop-thread-2] ERROR io.vertx.ext.web.RoutingContext - Unhandled exception in router
+io.vertx.ext.web.handler.HttpException: Unauthorized
+Caused by: io.vertx.core.impl.NoStackTraceThrowable: Invalid JWT token: token expired.
+17:22:06.493 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+17:27:51.732 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+17:27:51.733 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+17:27:51.734 [main] INFO  o.f.c.i.license.VersionPrinter - 
+17:27:52.163 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+17:27:52.171 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+17:27:52.201 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.022s)
+17:27:52.281 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+17:27:52.282 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+17:27:52.288 [main] INFO  org.example.BootStrap - Database migration complete.
+17:27:52.418 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+17:27:52.420 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+17:27:52.518 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+17:27:52.580 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+17:27:52.594 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+17:27:52.595 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+17:27:52.596 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+17:27:52.597 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+17:27:52.598 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+17:27:52.598 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+17:28:02.607 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+17:28:03.795 [vert.x-eventloop-thread-2] ERROR io.vertx.ext.web.RoutingContext - Unhandled exception in router
+io.vertx.ext.web.handler.HttpException: Unauthorized
+Caused by: io.vertx.core.impl.NoStackTraceThrowable: Invalid JWT token: token expired.
+17:28:43.665 [vert.x-eventloop-thread-1] ERROR o.e.s.database.DatabaseServiceImpl - Query execution failed: The number of parameters to execute should be consistent with the expected number of parameters = [1] but the actual number is [4].
+17:33:03.403 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+17:33:03.404 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+17:33:03.404 [main] INFO  o.f.c.i.license.VersionPrinter - 
+17:33:03.788 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+17:33:03.796 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+17:33:03.828 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.024s)
+17:33:03.886 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+17:33:03.887 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+17:33:03.893 [main] INFO  org.example.BootStrap - Database migration complete.
+17:33:04.022 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+17:33:04.025 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+17:33:04.116 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+17:33:04.206 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+17:33:04.221 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+17:33:04.222 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+17:33:04.223 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+17:33:04.225 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+17:33:04.226 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+17:33:04.226 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+17:33:14.233 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+17:38:13.033 [vert.x-eventloop-thread-1] ERROR o.e.s.database.DatabaseServiceImpl - Cannot invoke "String.trim()" because "query" is null
+17:47:22.319 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+17:47:22.321 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+17:47:22.322 [main] INFO  o.f.c.i.license.VersionPrinter - 
+17:47:22.783 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+17:47:22.792 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+17:47:22.830 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.028s)
+17:47:22.917 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+17:47:22.918 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+17:47:22.924 [main] INFO  org.example.BootStrap - Database migration complete.
+17:47:23.096 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+17:47:23.100 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+17:47:23.184 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+17:47:23.256 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+17:47:23.274 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+17:47:23.275 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+17:47:23.276 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+17:47:23.277 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+17:47:23.278 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+17:47:23.278 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+17:47:33.290 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+17:48:49.238 [vert.x-eventloop-thread-1] ERROR o.e.s.database.DatabaseServiceImpl - Cannot invoke "String.trim()" because "query" is null
+17:54:05.185 [main] INFO  o.f.c.i.license.VersionPrinter - Flyway Community Edition 9.4.0 by Redgate
+17:54:05.190 [main] INFO  o.f.c.i.license.VersionPrinter - See what's new here: https://flywaydb.org/documentation/learnmore/releaseNotes#9.4.0
+17:54:05.190 [main] INFO  o.f.c.i.license.VersionPrinter - 
+17:54:05.632 [main] INFO  o.f.c.i.d.base.BaseDatabaseType - Database: jdbc:postgresql://localhost:5432/nms_lite (PostgreSQL 17.4)
+17:54:05.647 [main] WARN  o.f.c.i.database.base.Database - Flyway upgrade recommended: PostgreSQL 17.4 is newer than this version of Flyway and support has not been tested. The latest supported version of PostgreSQL is 14.
+17:54:05.698 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 7 migrations (execution time 00:00.040s)
+17:54:05.830 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema "public": 6
+17:54:05.831 [main] INFO  o.f.core.internal.command.DbMigrate - Schema "public" is up to date. No migration necessary.
+17:54:05.845 [main] INFO  org.example.BootStrap - Database migration complete.
+17:54:06.080 [vert.x-eventloop-thread-1] INFO  o.example.service.database.Database - Services registered at database-service
+17:54:06.083 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Database started successfully
+17:54:06.189 [vert.x-eventloop-thread-1] INFO  o.e.service.database.DatabaseClient - Connected to database
+17:54:06.281 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - Server started successfully
+17:54:06.349 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - AvailabilityPollingEngine started successfully
+17:54:06.352 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollingProcessorEngine started successfully
+17:54:06.360 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - MetricPollingVerticle started successfully
+17:54:06.373 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - PollerEngine started successfully
+17:54:06.375 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - DiscoveryEngine started successfully
+17:54:06.375 [vert.x-eventloop-thread-0] INFO  org.example.BootStrap - All verticles started successfully in sequence
+17:54:16.392 [vert.x-eventloop-thread-5] WARN  o.e.verticles.MetricPollingVerticle - No devices are UP for IDs: [2,3]
+17:57:41.530 [vert.x-eventloop-thread-2] ERROR io.vertx.ext.web.RoutingContext - Unhandled exception in router
+io.vertx.ext.web.handler.HttpException: Unauthorized
+Caused by: io.vertx.core.impl.NoStackTraceThrowable: Invalid JWT token: token expired.
+17:58:14.793 [vert.x-eventloop-thread-2] ERROR org.example.routes.AbstractRouter - No discovery profiles found for IDs: [12]

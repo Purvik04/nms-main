@@ -38,9 +38,18 @@ public class PollingProcessorEngine extends AbstractVerticle
     @Override
     public void start(Promise<Void> startPromise) throws Exception
     {
-        localConsumer = vertx.eventBus().localConsumer(Constants.POLLING_PROCESSOR_ADDRESS, this::handlePolling);
+        try
+        {
+            localConsumer = vertx.eventBus().localConsumer(Constants.POLLING_PROCESSOR_ADDRESS, this::handlePolling);
 
-        startPromise.complete();
+            startPromise.complete();
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in deploying polling processor engine:{}", exception.getMessage());
+
+            startPromise.fail(exception);
+        }
     }
 
     /**

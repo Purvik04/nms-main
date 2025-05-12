@@ -45,64 +45,73 @@ public class PollerEngine extends AbstractVerticle
     @Override
     public void start(Promise<Void> startPromise)
     {
-        schedulerTimerId = vertx.setPeriodic(SCHEDULER_INTERVAL, timerId ->
+        try
         {
-            try
+            schedulerTimerId = vertx.setPeriodic(SCHEDULER_INTERVAL, timerId ->
             {
-                var currentTime = System.currentTimeMillis();
-
-                // Clear reusable JSON arrays before building fresh polling sets
-                AVAILABILITY_POLLING_DEVICE_IDS.clear();
-
-                METRIC_POLLING_DEVICE_IDS.clear();
-
-                // Retrieve all registered device IDs from cache
-                var devicesIds = AvailabilityCacheEngine.getAllDeviceIds();
-
-                if (!devicesIds.isEmpty())
+                try
                 {
-                    devicesIds.forEach(deviceId ->
+                    var currentTime = System.currentTimeMillis();
+
+                    // Clear reusable JSON arrays before building fresh polling sets
+                    AVAILABILITY_POLLING_DEVICE_IDS.clear();
+
+                    METRIC_POLLING_DEVICE_IDS.clear();
+
+                    // Retrieve all registered device IDs from cache
+                    var devicesIds = AvailabilityCacheEngine.getAllDeviceIds();
+
+                    if (!devicesIds.isEmpty())
                     {
-                        // Check if it's time to perform metric polling for this device
-                        if (currentTime - deviceTimerMetricMap.getOrDefault(deviceId, DEFAULT_TIMESTAMP)
-                                >= METRIC_POLLING_INTERVAL_MILLIS)
+                        devicesIds.forEach(deviceId ->
                         {
-                            deviceTimerMetricMap.put(deviceId, currentTime);
+                            // Check if it's time to perform metric polling for this device
+                            if (currentTime - deviceTimerMetricMap.getOrDefault(deviceId, DEFAULT_TIMESTAMP)
+                                    >= METRIC_POLLING_INTERVAL_MILLIS)
+                            {
+                                deviceTimerMetricMap.put(deviceId, currentTime);
 
-                            METRIC_POLLING_DEVICE_IDS.add(deviceId);
-                        }
+                                METRIC_POLLING_DEVICE_IDS.add(deviceId);
+                            }
 
-                        // Check if it's time to perform availability polling for this device
-                        if (currentTime - deviceTimerAvailabilityMap.getOrDefault(deviceId, DEFAULT_TIMESTAMP)
-                                >= AVL_POLLING_INTERVAL_MILLIS)
-                        {
-                            deviceTimerAvailabilityMap.put(deviceId, currentTime);
+                            // Check if it's time to perform availability polling for this device
+                            if (currentTime - deviceTimerAvailabilityMap.getOrDefault(deviceId, DEFAULT_TIMESTAMP)
+                                    >= AVL_POLLING_INTERVAL_MILLIS)
+                            {
+                                deviceTimerAvailabilityMap.put(deviceId, currentTime);
 
-                            AVAILABILITY_POLLING_DEVICE_IDS.add(deviceId);
-                        }
-                    });
+                                AVAILABILITY_POLLING_DEVICE_IDS.add(deviceId);
+                            }
+                        });
+                    }
+
+                    // Dispatch polling requests via EventBus if any devices are ready
+                    if (!AVAILABILITY_POLLING_DEVICE_IDS.isEmpty())
+                    {
+                        vertx.eventBus().send(Constants.AVAILABILITY_POLLING_ADDRESS,
+                                AVAILABILITY_POLLING_DEVICE_IDS.copy());
+                    }
+
+                    if (!METRIC_POLLING_DEVICE_IDS.isEmpty())
+                    {
+                        vertx.eventBus().send(Constants.METRIC_POLLING_ADDRESS,
+                                METRIC_POLLING_DEVICE_IDS.copy());
+                    }
                 }
-
-                // Dispatch polling requests via EventBus if any devices are ready
-                if (!AVAILABILITY_POLLING_DEVICE_IDS.isEmpty())
+                catch (Exception exception)
                 {
-                    vertx.eventBus().send(Constants.AVAILABILITY_POLLING_ADDRESS,
-                            AVAILABILITY_POLLING_DEVICE_IDS.copy());
+                    LOGGER.error("Error in Polling Scheduler: {}", exception.getMessage());
                 }
+            });
 
-                if (!METRIC_POLLING_DEVICE_IDS.isEmpty())
-                {
-                    vertx.eventBus().send(Constants.METRIC_POLLING_ADDRESS,
-                            METRIC_POLLING_DEVICE_IDS.copy());
-                }
-            }
-            catch (Exception exception)
-            {
-                LOGGER.error("Error in Polling Scheduler: {}", exception.getMessage());
-            }
-        });
+            startPromise.complete();
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in deploying poller engine: {}", exception.getMessage());
 
-        startPromise.fail("Poller engine failed.");
+            startPromise.fail(exception);
+        }
     }
 
     /**

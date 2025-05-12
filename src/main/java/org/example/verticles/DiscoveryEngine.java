@@ -34,10 +34,6 @@ public class DiscoveryEngine extends AbstractVerticle
     // SQL query to update discovery status
     private static final String UPDATE_DISCOVERY_RESULT_QUERY = "UPDATE discovery_profiles SET status = $1 WHERE id = $2";
 
-private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.ip, dp.port, cp.credentials, cp.system_type FROM discovery_profiles dp " +
-        "JOIN credential_profiles cp ON dp.credential_profile_id = cp.id " +
-        "WHERE dp.id IN ($1)";
-
     // Service proxy for interacting with the database
     private static final DatabaseService DATABASE_SERVICE = DatabaseService.createProxy(Database.DB_SERVICE_ADDRESS);
 
@@ -51,10 +47,17 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
     @Override
     public void start(Promise<Void> startPromise)
     {
-        // Initialize the discovery service by consuming the event bus address
-        localConsumer = vertx.eventBus().localConsumer(Constants.DISCOVERY_ADDRESS, this::handleDiscoveryRequest);
+        try
+        {
+            // Initialize the discovery service by consuming the event bus address
+            localConsumer = vertx.eventBus().localConsumer(Constants.DISCOVERY_ADDRESS, this::handleDiscoveryRequest);
 
-        startPromise.complete();
+            startPromise.complete();
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in deploying discovery engine:{}",exception.getMessage());
+        }
     }
 
     /**
@@ -67,158 +70,134 @@ private static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.i
     {
         try
         {
-            var deviceIds = discoveryRequest.body();
+            var devicesData = discoveryRequest.body();
 
             // Execute database query to fetch device data
-            DATABASE_SERVICE
-                    .executeQuery(new JsonObject()
-                            .put(Constants.QUERY, Utils.buildJoinQuery(FETCH_DISCOVERY_PROFILES_QUERY,deviceIds.size()))
-                            .put(Constants.PARAMS, deviceIds))
-                    .onSuccess(asyncResult ->
+            vertx.executeBlocking(() ->
+            {
+                var discoveryResponse = new JsonArray();
 
-                        // Run discovery process in a blocking thread
-                        vertx.executeBlocking(() ->
-                        {
-                            var discoveryResponse = new JsonArray();
+                var idToDeviceDataMap = new HashMap<Integer, JsonObject>();
 
-                            // If no data is returned, return early
-                            if (asyncResult.getJsonArray(Constants.DATA).isEmpty())
-                            {
-                                LOGGER.error("No discovery profiles found for IDs: {}", discoveryRequest.body());
+                // Map device ID to its full data for quick lookup
+                for (var index = 0; index < devicesData.size(); index++)
+                {
+                    idToDeviceDataMap.put(devicesData.getJsonObject(index).getInteger(Constants.ID),
+                            devicesData.getJsonObject(index));
+                }
 
-                                return new DiscoveryResult(discoveryResponse, "No discovery profiles found");
-                            }
+                // Run fping to check which devices are reachable
+                var pingResult = Utils.ping(devicesData);
 
-                            var devicesData = asyncResult.getJsonArray(Constants.DATA);
+                if (pingResult.isEmpty())
+                {
+                    LOGGER.error("ping processing failed");
 
-                            var idToDeviceDataMap = new HashMap<Integer, JsonObject>();
+                    return new DiscoveryResult(discoveryResponse, "ping processing failed");
+                }
 
-                            // Map device ID to its full data for quick lookup
-                            for (var index = 0; index < devicesData.size(); index++)
-                            {
-                                idToDeviceDataMap.put(devicesData.getJsonObject(index).getInteger(Constants.ID),
-                                        devicesData.getJsonObject(index));
-                            }
+                //data of devices that are eligible for port and ssh connection check
+                var sshFilteredDevicesData = new JsonArray();
 
-                            // Run fping to check which devices are reachable
-                            var pingResult = Utils.ping(devicesData);
+                // Filter ping result to select devices that are UP
+                for (var index = 0; index < pingResult.size(); index++)
+                {
+                    var pingOutput = pingResult.getJsonObject(index);
 
-                            if (pingResult.isEmpty())
-                            {
-                                LOGGER.error("ping processing failed");
-
-                                return new DiscoveryResult(discoveryResponse, "ping processing failed");
-                            }
-
-                            //data of devices that are eligible for port and ssh connection check
-                            var sshFilteredDevicesData = new JsonArray();
-
-                            // Filter ping result to select devices that are UP
-                            for (var index = 0; index < pingResult.size(); index++)
-                            {
-                                var pingOutput = pingResult.getJsonObject(index);
-
-                                if (pingOutput.getString(Constants.STATUS).equals(Constants.UP))
-                                {
-                                    sshFilteredDevicesData.add(idToDeviceDataMap.get(pingOutput.getInteger(Constants.ID)));
-                                }
-                                else
-                                {
-                                    discoveryResponse.add(new JsonObject()
-                                            .put(Constants.ID, pingOutput.getInteger(Constants.ID))
-                                            .put(Constants.SUCCESS, Constants.FALSE)
-                                            .put(STEP, FAILURE_STEP_PING));
-                                }
-                            }
-
-                            // If no devices passed ping, return early
-                            if (sshFilteredDevicesData.isEmpty())
-                            {
-                                return new DiscoveryResult(discoveryResponse, null);
-                            }
-
-                            // Run SSH discovery using Go plugin
-                            var pluginOutput = Utils.spawnGoPlugin(sshFilteredDevicesData, Constants.DISCOVERY);
-
-                            if (pluginOutput.isEmpty())
-                            {
-                                LOGGER.error("Go plugin execution failed");
-
-                                return new DiscoveryResult(discoveryResponse.clear(), "Go plugin execution failed");
-                            }
-
-                            // Add plugin output to the response
-                            for (var index = 0; index < pluginOutput.size(); index++)
-                            {
-                                var pluginResult = pluginOutput.getJsonObject(index);
-
-                                discoveryResponse.add(new JsonObject()
-                                        .put(Constants.ID, pluginResult.getInteger(Constants.ID))
-                                        .put(Constants.SUCCESS, pluginResult.getBoolean(Constants.SUCCESS))
-                                        .put(STEP, pluginResult.getString(STEP)));
-                            }
-
-                            return new DiscoveryResult(discoveryResponse, null);
-
-                        }, false, result ->
-                        {
-                            // Final result processing after blocking call
-                            if (result.failed())
-                            {
-                                LOGGER.error("Discovery processing failed: {}", result.cause().getMessage());
-
-                                discoveryRequest.fail(500, result.cause().getMessage());
-                            }
-                            else
-                            {
-                                var discoveryResult = result.result();
-
-                                if (discoveryResult.isSuccess())
-                                {
-                                    var discoveryResponse = discoveryResult.discoveryResponse();
-
-                                    var batchParams = new JsonArray();
-
-                                    // Prepare parameters for batch update to DB
-                                    for (var index = 0; index < discoveryResponse.size(); index++)
-                                    {
-                                        var responseObject = discoveryResponse.getJsonObject(index);
-
-                                        batchParams.add(new JsonArray()
-                                                .add(responseObject.getBoolean(Constants.SUCCESS))
-                                                .add(responseObject.getInteger(Constants.ID)));
-                                    }
-
-                                    // Send batch update request to database
-                                    DATABASE_SERVICE.executeQuery(new JsonObject()
-                                                    .put(Constants.QUERY, UPDATE_DISCOVERY_RESULT_QUERY)
-                                                    .put(Constants.PARAMS, batchParams))
-                                            .onSuccess(updateResult -> discoveryRequest.reply(discoveryResponse))
-                                            .onFailure(updateError ->
-                                            {
-                                                LOGGER.error("Database update failed: {}", updateError.getMessage());
-
-                                                discoveryRequest.fail(500, "Database update failed: "
-                                                        + updateError.getMessage());
-                                            });
-
-                                    discoveryRequest.reply(result.result().discoveryResponse());
-                                }
-                                else
-                                {
-                                    LOGGER.error("Discovery failed: {}", result.result().errorMessage());
-
-                                    discoveryRequest.fail(500, result.result().errorMessage());
-                                }
-                            }
-                        })
-                    ).onFailure(error ->
+                    if (pingOutput.getString(Constants.STATUS).equals(Constants.UP))
                     {
-                        // If initial query to fetch devices failed
-                        LOGGER.error("Database query failed: {}", error.getMessage());
+                        sshFilteredDevicesData.add(idToDeviceDataMap.get(pingOutput.getInteger(Constants.ID)));
+                    }
+                    else
+                    {
+                        discoveryResponse.add(new JsonObject()
+                                .put(Constants.ID, pingOutput.getInteger(Constants.ID))
+                                .put(Constants.SUCCESS, Constants.FALSE)
+                                .put(STEP, FAILURE_STEP_PING));
+                    }
+                }
 
-                        discoveryRequest.fail(500, error.getMessage());
-                    });
+                // If no devices passed ping, return early
+                if (sshFilteredDevicesData.isEmpty())
+                {
+                    return new DiscoveryResult(discoveryResponse, null);
+                }
+
+                // Run SSH discovery using Go plugin
+                var pluginOutput = Utils.spawnGoPlugin(sshFilteredDevicesData, Constants.DISCOVERY);
+
+                if (pluginOutput.isEmpty())
+                {
+                    LOGGER.error("Go plugin execution failed");
+
+                    return new DiscoveryResult(discoveryResponse.clear(), "Go plugin execution failed");
+                }
+
+                // Add plugin output to the response
+                for (var index = 0; index < pluginOutput.size(); index++)
+                {
+                    var pluginResult = pluginOutput.getJsonObject(index);
+
+                    discoveryResponse.add(new JsonObject()
+                            .put(Constants.ID, pluginResult.getInteger(Constants.ID))
+                            .put(Constants.SUCCESS, pluginResult.getBoolean(Constants.SUCCESS))
+                            .put(STEP, pluginResult.getString(STEP)));
+                }
+
+                return new DiscoveryResult(discoveryResponse, null);
+
+            }, false, result ->
+            {
+                // Final result processing after blocking call
+                if (result.failed())
+                {
+                    LOGGER.error("Discovery processing failed: {}", result.cause().getMessage());
+
+                    discoveryRequest.fail(500, result.cause().getMessage());
+                }
+                else
+                {
+                    var discoveryResult = result.result();
+
+                    if (discoveryResult.isSuccess())
+                    {
+                        var discoveryResponse = discoveryResult.discoveryResponse();
+
+                        var batchParams = new JsonArray();
+
+                        // Prepare parameters for batch update to DB
+                        for (var index = 0; index < discoveryResponse.size(); index++)
+                        {
+                            var responseObject = discoveryResponse.getJsonObject(index);
+
+                            batchParams.add(new JsonArray()
+                                    .add(responseObject.getBoolean(Constants.SUCCESS))
+                                    .add(responseObject.getInteger(Constants.ID)));
+                        }
+
+                        // Send batch update request to database
+                        DATABASE_SERVICE.executeQuery(new JsonObject()
+                                        .put(Constants.QUERY, UPDATE_DISCOVERY_RESULT_QUERY)
+                                        .put(Constants.PARAMS, batchParams))
+                                .onSuccess(updateResult -> discoveryRequest.reply(discoveryResponse))
+                                .onFailure(updateError ->
+                                {
+                                    LOGGER.error("Database update failed: {}", updateError.getMessage());
+
+                                    discoveryRequest.fail(500, "Database update failed: "
+                                            + updateError.getMessage());
+                                });
+
+                        discoveryRequest.reply(result.result().discoveryResponse());
+                    }
+                    else
+                    {
+                        LOGGER.error("Discovery failed: {}", result.result().errorMessage());
+
+                        discoveryRequest.fail(500, result.result().errorMessage());
+                    }
+                }
+            });
         }
         catch (Exception exception)
         {

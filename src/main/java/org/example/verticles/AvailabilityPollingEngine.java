@@ -47,49 +47,58 @@ public class AvailabilityPollingEngine extends AbstractVerticle
     @Override
     public void start(Promise<Void> startPromise)
     {
-        // Execute query to fetch all devices from the provisioning_jobs table
-        DATABASE_SERVICE.executeQuery(new JsonObject().put(Constants.QUERY ,FETCH_ALL_DEVICES_ID_QUERY))
-                .onSuccess(result ->
-                {
-                    // If the query was successful, fetch the devices data
-                    if(Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
+        try
+        {
+            // Execute query to fetch all devices from the provisioning_jobs table
+            DATABASE_SERVICE.executeQuery(new JsonObject().put(Constants.QUERY ,FETCH_ALL_DEVICES_ID_QUERY))
+                    .onSuccess(result ->
                     {
-                        var deviceData = result.getJsonArray(Constants.DATA);
-
-                        // If devices are found, initialize their status to "DOWN"
-                        if (!deviceData.isEmpty())
+                        // If the query was successful, fetch the devices data
+                        if(Boolean.TRUE.equals(result.getBoolean(Constants.SUCCESS)))
                         {
-                            for(var index = 0; index < deviceData.size(); index++)
-                            {
-                                try
-                                {
-                                    // Set the device status to "DOWN" initially in the cache
-                                    AvailabilityCacheEngine.setDeviceStatus(deviceData
-                                            .getJsonObject(index).getInteger(Constants.ID),Constants.DOWN);
-                                }
-                                catch (Exception exception)
-                                {
-                                    // Log any exception during device status setting
-                                    LOGGER.error("Error in setting device status: {}", exception.getMessage());
+                            var deviceData = result.getJsonArray(Constants.DATA);
 
-                                    startPromise.fail(exception.getMessage());
+                            // If devices are found, initialize their status to "DOWN"
+                            if (!deviceData.isEmpty())
+                            {
+                                for(var index = 0; index < deviceData.size(); index++)
+                                {
+                                    try
+                                    {
+                                        // Set the device status to "DOWN" initially in the cache
+                                        AvailabilityCacheEngine.setDeviceStatus(deviceData
+                                                .getJsonObject(index).getInteger(Constants.ID),Constants.DOWN);
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        // Log any exception during device status setting
+                                        LOGGER.error("Error in setting device status: {}", exception.getMessage());
+
+                                        startPromise.fail(exception.getMessage());
+                                    }
                                 }
                             }
+                            // Complete the promise once initialization is done
+                            startPromise.complete();
                         }
-                        // Complete the promise once initialization is done
-                        startPromise.complete();
-                    }
-                })
-                .onFailure( error ->
-                {
-                    // Log any failure in fetching devices and fail the promise
-                    LOGGER.error("Error in fetching devices: {}", error.getMessage());
+                    })
+                    .onFailure( error ->
+                    {
+                        // Log any failure in fetching devices and fail the promise
+                        LOGGER.error("Error in fetching devices: {}", error.getMessage());
 
-                    startPromise.fail("Error in fetching devices: " + error.getMessage());
-                });
+                        startPromise.fail("Error in fetching devices: " + error.getMessage());
+                    });
 
-        // Set up an event bus consumer to handle availability polling requests
-        localConsumer = vertx.eventBus().localConsumer(Constants.AVAILABILITY_POLLING_ADDRESS,this::handleAvailabilityPolling);
+            // Set up an event bus consumer to handle availability polling requests
+            localConsumer = vertx.eventBus().localConsumer(Constants.AVAILABILITY_POLLING_ADDRESS,this::handleAvailabilityPolling);
+        }
+        catch (Exception exception)
+        {
+            LOGGER.error("Error in deploying availability polling verticle: {}", exception.getMessage());
+
+            startPromise.fail(exception);
+        }
     }
 
     /**

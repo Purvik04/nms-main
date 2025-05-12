@@ -72,7 +72,6 @@ public class DatabaseServiceImpl implements DatabaseService
 
         var tuple = Tuple.tuple();
 
-
         // Append RETURNING id to insert/update if not present
         if ((query.trim().startsWith(Constants.DB_INSERT) ||
                 query.trim().startsWith(Constants.DB_UPDATE)) &&

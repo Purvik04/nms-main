@@ -1,11 +1,13 @@
 package org.example.routes;
 
 import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import org.example.BootStrap;
 import org.example.utils.Constants;
 import org.example.utils.Utils;
+import org.example.verticles.DiscoveryEngine;
 
 public class DiscoveryRouter extends AbstractRouter
 {
@@ -49,26 +51,31 @@ public class DiscoveryRouter extends AbstractRouter
                         .put(Constants.TABLE_NAME, Utils.getTableNameFromContext(context))
                         .put(Constants.DATA, body.toJsonObject());
 
-                var query = Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams);
-
                 DATABASE_SERVICE
-                        .executeQuery(query)
+                        .executeQuery(Utils.buildQuery(reusableQueryObject, reusableStringQuery, reusableQueryParams))
                         .onSuccess(reply ->
-                                context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS,
-                                        new JsonArray().add(reply.getJsonArray(Constants.DATA).getJsonObject(0)
-                                                .getInteger(Constants.ID)), asyncResult ->
-                                        {
-                                            if (asyncResult.succeeded())
-                                            {
-                                                context.response()
-                                                        .setStatusCode(Constants.SC_201)
-                                                        .end(asyncResult.result().body().encode());
-                                            }
-                                            else
-                                            {
-                                                context.response().setStatusCode(Constants.SC_500).end(asyncResult.cause().getMessage());
-                                            }
-                                        }))
+
+                                DATABASE_SERVICE.executeQuery(new JsonObject()
+                                        .put(Constants.QUERY,  Utils.buildJoinQuery(Constants.FETCH_DISCOVERY_PROFILES_QUERY,reply.getJsonArray(Constants.DATA).size()))
+                                        .put(Constants.PARAMS, new JsonArray().add(reply.getJsonArray(Constants.DATA)
+                                                .getJsonObject(0).getInteger(Constants.ID))))
+                                        .onSuccess(databaseReply ->
+
+                                            context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS,
+                                                    databaseReply.getJsonArray(Constants.DATA), asyncResult ->
+                                                    {
+                                                        if (asyncResult.succeeded())
+                                                        {
+                                                            context.response().setStatusCode(Constants.SC_201)
+                                                                    .end(asyncResult.result().body().encode());
+                                                        }
+                                                        else
+                                                        {
+                                                            context.response().setStatusCode(Constants.SC_500)
+                                                                    .end(asyncResult.cause().getMessage());
+                                                        }
+                                                    })
+                                        ).onFailure(error -> dbServiceFailed(context, error.getMessage())))
                         .onFailure(error -> dbServiceFailed(context, error.getMessage()));
             }
             catch (Exception exception)
@@ -92,19 +99,41 @@ public class DiscoveryRouter extends AbstractRouter
                 }
                 else
                 {
-                    context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS, body.toJsonObject().getJsonArray(Constants.IDS), asyncResult ->
-                    {
-                        if (asyncResult.succeeded())
-                        {
-                            context.response()
-                                    .setStatusCode(Constants.SC_200)
-                                    .end(asyncResult.result().body().encode());
-                        }
-                        else
-                        {
-                            context.response().setStatusCode(Constants.SC_500).end(asyncResult.cause().getMessage());
-                        }
-                    });
+                    setReusableObjects();
+
+                    var deviceIDs = body.toJsonObject().getJsonArray(Constants.IDS);
+
+                    DATABASE_SERVICE.executeQuery(new JsonObject()
+                                    .put(Constants.QUERY, Utils.buildJoinQuery(Constants.FETCH_DISCOVERY_PROFILES_QUERY,deviceIDs.size()))
+                                    .put(Constants.PARAMS,deviceIDs))
+                                    .onSuccess(response->
+                                    {
+                                        if (response.getJsonArray(Constants.DATA).isEmpty())
+                                        {
+                                            LOGGER.error("No discovery profiles found for IDs: {}", deviceIDs);
+
+                                            context.response().end(new JsonObject()
+                                                    .put(Constants.SUCCESS, Constants.FALSE)
+                                                    .put(Constants.ERROR, "No discovery profiles found").encode());
+                                        }
+                                        else
+                                        {
+                                            context.vertx().eventBus().<JsonArray>request(Constants.DISCOVERY_ADDRESS,response.getJsonArray(Constants.DATA), asyncResult ->
+                                            {
+                                                if (asyncResult.succeeded())
+                                                {
+                                                    context.response()
+                                                            .setStatusCode(Constants.SC_200)
+                                                            .end(asyncResult.result().body().encode());
+                                                }
+                                                else
+                                                {
+                                                    context.response().setStatusCode(Constants.SC_500).end(asyncResult.cause().getMessage());
+                                                }
+                                            });
+                                        }
+                                    })
+                                    .onFailure(error -> dbServiceFailed(context, error.getMessage()));
                 }
             }
             catch (Exception exception)

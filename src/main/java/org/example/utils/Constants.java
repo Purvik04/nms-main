@@ -191,5 +191,9 @@ public class Constants
     public static final boolean TRUE = true;
 
     public static final boolean FALSE = false;
+
+
+    public static final String FETCH_DISCOVERY_PROFILES_QUERY = "SELECT dp.id, dp.ip, dp.port, cp.credentials, cp.system_type FROM discovery_profiles dp " +
+            "JOIN credential_profiles cp ON dp.credential_profile_id = cp.id WHERE dp.id IN ($1)";
 }
 
